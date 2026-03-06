@@ -19,7 +19,7 @@ import getpass
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
-REPO_URL = "https://github.com/jhi2/Katana.git"
+REPO_URL = "https://github.com/JohnnyTech-PRINTR-Cyan/Katana.git"
 APP_NAME = "Katana"
 APP_COMMENT = "Katana Application"
 CATEGORIES = "Utility;Development;"

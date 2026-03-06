@@ -30,7 +30,7 @@ install_deps() {
 if ! command -v python3 &> /dev/null || ! command -v git &> /dev/null || ! command -v curl &> /dev/null; then install_deps; fi
 
 echo -e "▸ Downloading Katana installer..."
-INSTALLER_URL="https://raw.githubusercontent.com/jhi2/Katana/main/install.py"
+INSTALLER_URL="https://raw.githubusercontent.com/JohnnyTech-PRINTR-Cyan/Katana/main/install.py"
 curl -LO $INSTALLER_URL || wget $INSTALLER_URL
 
 if [ -f "install.py" ]; then

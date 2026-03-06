@@ -1,21 +1,5 @@
-<!DOCTYPE html>
-<html>
+{% extends "load.html" %}
+{% block content %}
 
-<head>
-    <title>{{page_title}} Katana v{{version}}</title>
-    <link rel="icon" type="image/png" href="/static/icon.png">
-    <link rel="apple-touch-icon" href="/static/icon.png">
-    <link rel="manifest" href="/static/manifest.json">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"> <!-- Bulma css-->
-</head>
 
-<body class="has-background-black has-text-light" style="min-height: 100vh;">
-    <section class="section">
-        <div class="container has-text-centered">
-            <h1 class="title has-text-white">{{page_title}} Katana v{{version}}</h1>
-            <p class="subtitle has-text-grey-light">{{page_title}} Katana v{{version}}</p>
-        </div>
-    </section>
-</body>
-
-</html>
+{% endblock %}

@@ -10,7 +10,7 @@ where python >nul 2>&1 || (echo ▸ Installing Python... && winget install --id 
 set PATH=%PATH%;%USERPROFILE%\AppData\Local\Programs\Python\Python312\;%USERPROFILE%\AppData\Local\Programs\Python\Python312\Scripts\
 
 echo ▸ Downloading Katana installer...
-curl -LO https://raw.githubusercontent.com/jhi2/Katana/main/install.py
+curl -LO https://raw.githubusercontent.com/JohnnyTech-PRINTR-Cyan/Katana/main/install.py
 
 if exist install.py (
     echo ▸ Launching Katana installer...

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>{{page_title}} v{{version}}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"> <!-- Bulma css-->
+</head>
+
+<body class="has-background-black has-text-light" style="min-height: 100vh;">
+    <nav class="navbar is-primary">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="{{url_for('load')}}">
+                <img src="{{ url_for('static', filename='icon.png') }}" width="28" height="28">
+            </a>
+            <div class="navbar-item">
+                <p class="has-text-white has-text-weight-bold">Katana v{{version}}</p>
+            </div>
+
+        </div>
+
+
+
+    </nav>
+    {% block content %}
+    {% endblock %}
+</body>
+
+</html>

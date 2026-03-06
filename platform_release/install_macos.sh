@@ -23,7 +23,7 @@ echo -e "▸ Ensuring dependencies..."
 brew install python git curl
 
 echo -e "▸ Downloading Katana installer..."
-INSTALLER_URL="https://raw.githubusercontent.com/jhi2/Katana/main/install.py"
+INSTALLER_URL="https://raw.githubusercontent.com/JohnnyTech-PRINTR-Cyan/Katana/main/install.py"
 curl -LO $INSTALLER_URL
 
 if [ -f "install.py" ]; then
