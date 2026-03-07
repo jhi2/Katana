@@ -21,7 +21,7 @@
                             <h3 class="title is-5 has-text-white">{{ profile.name }}</h3>
                             <p class="has-text-light">{{ profile.manufacturer }}</p>
                             <div class="tags">
-                                <span class="tag is-primary">{{ profile.bed_size[0] }}x{{ profile.bed_size[1] }}mm</span>
+                                <span class="tag is-primary">{{ profile.bed_size[0] }}x{{ profile.bed_size[1] }}x{{ profile.bed_size[2] }}mm</span>
                                 <span class="tag is-info">{{ profile.nozzle_size }}mm nozzle</span>
                             </div>
                         </div>
@@ -138,7 +138,7 @@
                             <h3 class="title is-5 has-text-white">{{ printer.data.name }}</h3>
                             <p class="has-text-light">{{ printer.data.manufacturer }}</p>
                             <div class="tags">
-                                <span class="tag is-primary">{{ printer.data.bed_width }}x{{ printer.data.bed_depth }}mm</span>
+                                <span class="tag is-primary">{{ printer.data.bed_size[0] }}x{{ printer.data.bed_size[1] }}x{{ printer.data.bed_size[2] }}mm</span>
                                 <span class="tag is-info">{{ printer.data.nozzle_size }}mm nozzle</span>
                             </div>
                         </div>
@@ -259,8 +259,8 @@ document.getElementById('customPrinterForm').addEventListener('submit', function
             distance: 5,
             speed: 45
         },
-        gcode_start: "G28 ; Home\\nG1 Z2.0 F3000 ; Move Z Axis up\\nM104 S{temp} ; Set Hotend Temperature\\nM140 S{bed_temp} ; Set Bed Temperature",
-        gcode_end: "G28 X0 Y0 ; Home X and Y\\nG1 Z{max_z} ; Raise Z\\nM104 S0 ; Turn off hotend\\nM140 S0 ; Turn off bed"
+        gcode_start: "G28 ; Home\nG1 Z2.0 F3000 ; Move Z Axis up\nM104 S{temp} ; Set Hotend Temperature\nM140 S{bed_temp} ; Set Bed Temperature",
+        gcode_end: "G28 X0 Y0 ; Home X and Y\nG1 Z{max_z} ; Raise Z\nM104 S0 ; Turn off hotend\nM140 S0 ; Turn off bed"
     };
     
     fetch('/save_custom_printer', {
