@@ -29,8 +29,8 @@ SYSTEM = platform.system().lower()
 USERNAME = getpass.getuser()
 HOME = os.path.expanduser("~")
 
-# Install paths
-INSTALL_DIR = os.path.dirname(os.path.abspath(__file__))
+# Install paths - always use ~/Katana as target, not script location
+INSTALL_DIR = os.path.join(HOME, "Katana")
 PRINT3R_DIR = os.path.join(INSTALL_DIR, "Print3r")
 
 VENV_DIR = os.path.join(INSTALL_DIR, ".venv")
@@ -137,18 +137,39 @@ def clone_repo():
         success("Already in a git repository; skipping clone.")
         return
 
-    if os.path.exists(INSTALL_DIR) and len(os.listdir(INSTALL_DIR)) > 1:
+    # Check directory contents
+    contents = os.listdir(INSTALL_DIR) if os.path.exists(INSTALL_DIR) else []
+    
+    # If only install.py exists, we can safely clone (remove it first)
+    if len(contents) == 1 and contents[0] in ("install.py", "install.pyw"):
+        step("Removing install.py before cloning...")
+        os.remove(os.path.join(INSTALL_DIR, contents[0]))
+        # Clone into current directory (.)
+        run(["git", "clone", REPO_URL, "."], cwd=INSTALL_DIR)
+        success(f"Cloned to {INSTALL_DIR}")
+        return
+    
+    # If directory has other files, ask to overwrite
+    if len(contents) > 0:
         warn(f"Directory already exists and is not empty: {INSTALL_DIR}")
         response = input(f"  {color('?', Colors.YELLOW)} Overwrite? [y/N]: ").strip().lower()
         if response in ("y", "yes"):
-            step(f"Removing existing directory: {INSTALL_DIR}")
-            shutil.rmtree(INSTALL_DIR)
+            step(f"Removing existing directory contents...")
+            for item in contents:
+                item_path = os.path.join(INSTALL_DIR, item)
+                if os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
+                else:
+                    os.remove(item_path)
+            run(["git", "clone", REPO_URL, "."], cwd=INSTALL_DIR)
+            success(f"Cloned to {INSTALL_DIR}")
         else:
             error("Installation cancelled.")
             sys.exit(1)
-
-    run(["git", "clone", REPO_URL, INSTALL_DIR])
-    success(f"Cloned to {INSTALL_DIR}")
+    else:
+        # Empty directory, clone directly into it
+        run(["git", "clone", REPO_URL, "."], cwd=INSTALL_DIR)
+        success(f"Cloned to {INSTALL_DIR}")
 
 
 # ─── Create Virtual Environment & Install Dependencies ───────────────────────

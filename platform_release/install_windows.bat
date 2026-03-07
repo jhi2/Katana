@@ -21,6 +21,12 @@ where CuraEngine >nul 2>&1 || (
 
 set PATH=%PATH%;%USERPROFILE%\AppData\Local\Programs\Python\Python312\;%USERPROFILE%\AppData\Local\Programs\Python\Python312\Scripts\;%ProgramFiles%\OpenSCAD\;%ProgramFiles%\StrawberryPerl\perl\bin\;%ProgramFiles%\StrawberryPerl\c\bin\
 
+REM Create and enter Katana directory
+set INSTALL_DIR=%USERPROFILE%\Katana
+echo ▸ Creating install directory: %INSTALL_DIR%
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+cd /d "%INSTALL_DIR%"
+
 echo ▸ Downloading Katana installer...
 curl -LO https://raw.githubusercontent.com/JohnnyTech-PRINTR-Cyan/Katana/main/install.py
 

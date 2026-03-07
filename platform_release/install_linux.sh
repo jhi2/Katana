@@ -40,6 +40,12 @@ check_curaengine() {
 
 if ! command -v python3 &> /dev/null || ! command -v git &> /dev/null || ! command -v curl &> /dev/null; then install_deps; fi
 
+# Create and enter Katana directory
+INSTALL_DIR="$HOME/Katana"
+echo -e "▸ Creating install directory: ${CYAN}$INSTALL_DIR${NC}"
+mkdir -p "$INSTALL_DIR"
+cd "$INSTALL_DIR" || { echo -e "${RED}✗ Failed to enter $INSTALL_DIR${NC}"; exit 1; }
+
 echo -e "▸ Downloading Katana installer..."
 INSTALLER_URL="https://raw.githubusercontent.com/JohnnyTech-PRINTR-Cyan/Katana/main/install.py"
 curl -LO $INSTALLER_URL || wget $INSTALLER_URL

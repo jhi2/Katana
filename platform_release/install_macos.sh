@@ -29,6 +29,12 @@ brew install --cask openscad || echo -e "${YELLOW}⚠ OpenSCAD installation skip
 echo -e "▸ Installing CuraEngine (standalone slicer)..."
 brew install curaengine || echo -e "${YELLOW}⚠ CuraEngine may need manual install from https://github.com/Ultimaker/CuraEngine/releases${NC}"
 
+# Create and enter Katana directory
+INSTALL_DIR="$HOME/Katana"
+echo -e "▸ Creating install directory: ${CYAN}$INSTALL_DIR${NC}"
+mkdir -p "$INSTALL_DIR"
+cd "$INSTALL_DIR" || { echo -e "${RED}✗ Failed to enter $INSTALL_DIR${NC}"; exit 1; }
+
 echo -e "▸ Downloading Katana installer..."
 INSTALLER_URL="https://raw.githubusercontent.com/JohnnyTech-PRINTR-Cyan/Katana/main/install.py"
 curl -LO $INSTALLER_URL
