@@ -3,11 +3,16 @@ from flask import *
 from version import *
 from configmanager import *
 from validators import ValidationError, validate_printer_profile, validate_selection_data, validate_ip_address
+import requests
+import json as json_module
 app = Flask(__name__)
 config = ConfigManager()
-
+with open("teapot.cfg", "r") as f:
+    t = f.read().strip() == "True"
 @app.route('/')
 def load():
+    if t:
+        return abort(418)
     if config.check_config("config.json"):
         config.load_config("config.json")
         return render_template('index.html', version=v, page_title="Katana")
@@ -18,6 +23,10 @@ def load():
 @app.route('/welcome')
 def welcome():
     return render_template('welcomeflow.html', version=v, page_title="Katana")
+
+@app.route('/download_setup')
+def download_setup():
+    return render_template('download-setup.html', version=v, page_title="Katana - Download Configuration")
 
 @app.route('/printer_setup')
 def printer_setup():
@@ -127,6 +136,69 @@ def save_printer_selection():
         return jsonify({"success": False, "error": str(e)})
     except Exception as e:
         return jsonify({"success": False, "error": "Internal server error"})
-    
+
+
+@app.route('/api/config')
+def get_current_config():
+    try:
+        config.load_config("config.json")
+        return jsonify(config.config)
+    except Exception as e:
+        return jsonify({"success": False, "error": "Failed to load config"})
+
+
+@app.route('/download_config', methods=['POST'])
+def download_config():
+    try:
+        # Get endpoint URL from request
+        if not request.is_json:
+            return jsonify({"success": False, "error": "Content-Type must be application/json"})
+        
+        data = request.get_json()
+        endpoint_url = data.get('endpoint_url', '').strip()
+        
+        if not endpoint_url:
+            return jsonify({"success": False, "error": "No endpoint URL provided"})
+        
+        # Validate URL format
+        if not endpoint_url.startswith(('http://', 'https://')):
+            return jsonify({"success": False, "error": "Invalid URL format. Must start with http:// or https://"})
+        
+        # Try to download config
+        try:
+            download_url = endpoint_url
+            if not download_url.endswith('/config.json'):
+                if not download_url.endswith('/'):
+                    download_url += '/'
+                download_url += 'config.json'
+                
+            response = requests.get(download_url, timeout=10)
+            response.raise_for_status()
+            
+            # Parse and validate the downloaded config
+            downloaded_config = response.json()
+            
+            # Basic validation - check if it looks like a Katana config
+            if not isinstance(downloaded_config, dict):
+                return jsonify({"success": False, "error": "Invalid config format"})
+            
+            # Save the downloaded config
+            config.config = downloaded_config
+            config.save_config("config.json")
+            
+            return jsonify({
+                "success": True, 
+                "message": f"Config downloaded from {endpoint_url}",
+                "config": downloaded_config
+            })
+            
+        except requests.exceptions.RequestException as e:
+            return jsonify({"success": False, "error": f"Failed to download: {str(e)}"})
+        except json_module.JSONDecodeError:
+            return jsonify({"success": False, "error": "Invalid JSON in downloaded config"})
+            
+    except Exception as e:
+        return jsonify({"success": False, "error": "Internal server error"})
+
 
 print("DO NOT RUN THIS SCRIPT DIRECTLY! USE main.py TO RUN KATANA!")

@@ -30,57 +30,123 @@
 </div>
 
 <div class="container is-fluid" style="padding-top: 2rem;">
-  <div id="home-content" class="tab-content">
-    <div class="hero is-primary">
-      <div class="hero-body">
-        <div class="container">
-          <h1 class="title has-text-white">Welcome to Katana</h1>
-          <p class="subtitle has-text-light">Print Awesome.</p>
-        </div>
-      </div>
-    </div>
+  <div id="home-content" class="tab-content" style="animation: fadeIn 0.5s;">
   </div>
-  
-  <div id="printers-content" class="tab-content" style="display: none;">
-    <div class="notification is-info">
-      <h2 class="title">Slicing Interface</h2>
-      <p>3D model slicing and print preparation will go here.</p>
-    </div>
+
+  <div id="printers-content" class="tab-content">
   </div>
-  
-  <div id="videos-content" class="tab-content" style="display: none;">
-    <div class="notification is-warning">
-      <h2 class="title">Print Monitoring</h2>
-      <p>Live print monitoring and camera feed will go here.</p>
-    </div>
+
+  <div id="videos-content" class="tab-content">
   </div>
-  
-  <div id="documents-content" class="tab-content" style="display: none;">
-    <div class="notification is-success">
-      <h2 class="title">Settings</h2>
-      <p>Application settings and configuration will go here.</p>
-    </div>
+
+  <div id="documents-content" class="tab-content">
   </div>
 </div>
 
+<style>
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.is-active {
+    display: block;
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  .tabs li.is-active a {
+    border-bottom-color: #00d1b2;
+    color: #00d1b2;
+  }
+</style>
+
 <script>
-function switchTab(tabName) {
-  // Remove active class from all tabs
-  document.querySelectorAll('.tabs li').forEach(tab => {
-    tab.classList.remove('is-active');
+  function switchTab(tabName) {
+    // Remove active class from all tabs
+    document.querySelectorAll('.tabs li').forEach(tab => {
+      tab.classList.remove('is-active');
+    });
+
+    // Hide all content and remove active class
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.remove('is-active');
+    });
+
+    // Activate selected tab
+    document.getElementById(tabName + '-tab').classList.add('is-active');
+
+    // Show selected content with animation
+    const content = document.getElementById(tabName + '-content');
+    content.classList.add('is-active');
+  }
+
+  // Initial setup
+  document.addEventListener('DOMContentLoaded', () => {
+    // Default to home content being active
+    const homeContent = document.getElementById('home-content');
+    if (homeContent) homeContent.classList.add('is-active');
   });
-  
-  // Hide all content
-  document.querySelectorAll('.tab-content').forEach(content => {
-    content.style.display = 'none';
-  });
-  
-  // Activate selected tab
-  document.getElementById(tabName + '-tab').classList.add('is-active');
-  
-  // Show selected content
-  document.getElementById(tabName + '-content').style.display = 'block';
-}
+
+  // Download config from endpoint (utility for setup flow)
+  async function downloadConfig() {
+    const endpointUrl = document.getElementById('endpoint-url').value.trim();
+    const statusDiv = document.getElementById('download-status');
+
+    if (!endpointUrl) {
+      showStatus(statusDiv, 'Please enter an endpoint URL', 'error');
+      return;
+    }
+
+    // Show loading status
+    showStatus(statusDiv, 'Downloading configuration...', 'info');
+
+    try {
+      const response = await fetch('/download_config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ endpoint_url: endpointUrl })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showStatus(statusDiv, result.message, 'success');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showStatus(statusDiv, result.error, 'error');
+      }
+    } catch (error) {
+      showStatus(statusDiv, 'Failed to download config: ' + error.message, 'error');
+    }
+  }
+
+  // Show status message
+  function showStatus(element, message, type) {
+    if (!element) return;
+    element.textContent = message;
+    element.className = 'notification is-' + type;
+    element.style.display = 'block';
+
+    // Auto-hide after 5 seconds for success/info
+    if (type === 'success' || type === 'info') {
+      setTimeout(() => {
+        element.style.display = 'none';
+      }, 5000);
+    }
+  }
 </script>
 
 {% endblock %}

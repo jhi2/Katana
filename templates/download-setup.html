@@ -1,0 +1,118 @@
+{% extends "load.html" %}
+{% block content %}
+
+<div class="container is-fluid" style="padding-top: 2rem;">
+    <div class="columns is-centered">
+        <div class="column is-6">
+            <div class="box has-background-grey-darker">
+                <h1 class="title has-text-white">Connect to Cyan</h1>
+                <p class="subtitle has-text-light">Enter the IP address of the Cyan-Enabled 3D printer to download
+                    the configuration.</p>
+
+                <div class="field">
+                    <label class="label has-text-white">Cyan Endpoint URL</label>
+                    <div class="control has-icons-left">
+                        <input id="endpoint-url" class="input" type="url"
+                            placeholder="http://192.168.1.100:8050/config.json">
+                        <span class="icon is-small is-left">
+                            <i class="fas fa-network-wired"></i>
+                        </span>
+                    </div>
+                    <p class="help has-text-grey-light">Enter the IP address or hostname of the printer running
+                        Cyan.</p>
+                </div>
+
+                <div id="download-status" class="notification" style="display: none;"></div>
+
+                <div class="field is-grouped mt-5">
+                    <div class="control">
+                        <button class="button is-primary is-large" onclick="downloadConfig()">
+                            <span class="icon is-medium">
+                                <i class="fas fa-network-wired magic-icon"></i>
+                            </span>
+                            <span>Download & Finish</span>
+                        </button>
+                    </div>
+                    <div class="control">
+                        <a href="{{ url_for('printer_setup') }}" class="button is-light is-large">
+                            <span>Back</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        50% {
+            transform: scale(1.1);
+            opacity: 0.7;
+        }
+
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .magic-icon {
+        animation: pulse 2s infinite ease-in-out;
+    }
+</style>
+
+<script>
+    async function downloadConfig() {
+        const endpointUrl = document.getElementById('endpoint-url').value.trim();
+        const statusDiv = document.getElementById('download-status');
+        const downloadBtn = document.querySelector('button[onclick="downloadConfig()"]');
+
+        if (!endpointUrl) {
+            showStatus(statusDiv, 'Please enter an endpoint URL', 'error');
+            return;
+        }
+
+        // UI Loading State
+        downloadBtn.classList.add('is-loading');
+        showStatus(statusDiv, '✨ Magic Sync in progress... connecting to Cyan printer...', 'info');
+
+        try {
+            const response = await fetch('/download_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ endpoint_url: endpointUrl })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showStatus(statusDiv, '✅ Magic Sync complete! Settings imported successfully.', 'success');
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('load') }}";
+                }, 1500);
+            } else {
+                downloadBtn.classList.remove('is-loading');
+                showStatus(statusDiv, '❌ ' + (result.error || 'Connection failed'), 'danger');
+            }
+        } catch (error) {
+            downloadBtn.classList.remove('is-loading');
+            showStatus(statusDiv, '🚫 Connection error: ' + error.message, 'danger');
+        }
+    }
+
+    function showStatus(element, message, type) {
+        element.textContent = message;
+        element.className = 'notification is-' + type + ' mt-4';
+        element.style.display = 'block';
+    }
+</script>
+
+{% endblock %}

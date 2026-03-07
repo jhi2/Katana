@@ -10,7 +10,10 @@
                 style="text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">
                 Print awesome.
             </h1>
-            <button id="getStartedBtn" class="button is-primary is-large getstarted">Get Started</button>
+            <div class="buttons is-centered">
+                <button id="getStartedBtn" class="button is-primary is-large getstarted">Get Started</button>
+                <a href="{{ url_for('download_setup') }}" class="button is-info is-large">Connect to Cyan</a>
+            </div>
         </div>
     </div>
 
