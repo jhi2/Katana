@@ -15,18 +15,18 @@ def load():
         return abort(418)
     if config.check_config("config.json"):
         config.load_config("config.json")
-        return render_template('index.html', version=v, page_title="Katana")
+        return render_template('index.html', version=v, page_title="Katana", project_name="Untitled")
     else:
-        return render_template('welcomeflow.html', version=v, page_title="Katana")
+        return render_template('welcomeflow.html', version=v, page_title="Katana", project_name="None")
     
 
 @app.route('/welcome')
 def welcome():
-    return render_template('welcomeflow.html', version=v, page_title="Katana")
+    return render_template('welcomeflow.html', version=v, page_title="Katana", project_name="None")
 
 @app.route('/download_setup')
 def download_setup():
-    return render_template('download-setup.html', version=v, page_title="Katana - Download Configuration")
+    return render_template('download-setup.html', version=v, page_title="Katana - Download Configuration", project_name="None")
 
 @app.route('/printer_setup')
 def printer_setup():
@@ -43,7 +43,8 @@ def printer_setup():
                              version=v, 
                              page_title="Katana - Printer Setup",
                              profiles=prebuilt_profiles,
-                             saved_printers=saved_printers)
+                             saved_printers=saved_printers,
+                             project_name="None")
     except Exception as e:
         print(f"ERROR in printer_setup: {e}")
         # Return a simple error page to prevent loops

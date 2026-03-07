@@ -1,5 +1,31 @@
 # Katana Release Notes
 
+## Version 1.0.5
+
+### 🚀 New Features
+- **✨ Connect to Cyan (Magic Sync)**: Seamlessly import printer configurations from other Katana/Cyan instances via URL.
+- **Navbar Project Display**: Added "Current Project" status indicator to the top navigation bar for better workflow visibility.
+
+### 🎨 UI & UX Polish
+- **Branding Refresh**: Updated setup wizard terminology to focus on "Cyan" ecosystem integration.
+- **Enhanced Setup Wizard**: Improved button spacing, iconography, and animations (pulsing sync icons).
+- **Smooth Transitions**: Implemented fade-in animations for tab switching in the main dashboard.
+- **Faster Boot**: Significantly reduced splash screen duration (from 15s to 3s) for a snappier startup experience.
+
+### 🔧 Technical Changes
+- **Blank Canvas**: Stripped legacy content from main dashboard tabs to prepare for the upcoming 2.0.0 "Content Update".
+- **Robust Downloader**: Improved `/download_config` logic to automatically handle varied URL formats (trailing slashes, explicit file paths).
+
+---
+
+## Version 1.0.4
+
+### 🚀 New Features
+- **Config Downloader**: Initial implementation of the remote configuration import tool.
+- **Wizard Integration**: Added the download/import flow as a primary option during initial installation.
+
+---
+
 ## Version 1.0.3
 
 ### 🚀 New Features
