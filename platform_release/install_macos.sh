@@ -22,6 +22,13 @@ fi
 echo -e "▸ Ensuring dependencies..."
 brew install python git curl
 
+echo -e "▸ Installing Print3r dependencies..."
+brew install --cask openscad || echo -e "${YELLOW}⚠ OpenSCAD installation skipped${NC}"
+
+# Install CuraEngine standalone (not full Cura)
+echo -e "▸ Installing CuraEngine (standalone slicer)..."
+brew install curaengine || echo -e "${YELLOW}⚠ CuraEngine may need manual install from https://github.com/Ultimaker/CuraEngine/releases${NC}"
+
 echo -e "▸ Downloading Katana installer..."
 INSTALLER_URL="https://raw.githubusercontent.com/JohnnyTech-PRINTR-Cyan/Katana/main/install.py"
 curl -LO $INSTALLER_URL

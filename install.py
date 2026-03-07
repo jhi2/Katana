@@ -20,6 +20,7 @@ import getpass
 # ─── Configuration ────────────────────────────────────────────────────────────
 
 REPO_URL = "https://github.com/JohnnyTech-PRINTR-Cyan/Katana.git"
+PRINT3R_REPO_URL = "https://github.com/Spiritdude/Print3r.git"
 APP_NAME = "Katana"
 APP_COMMENT = "Katana Application"
 CATEGORIES = "Utility;Development;"
@@ -30,6 +31,7 @@ HOME = os.path.expanduser("~")
 
 # Install paths
 INSTALL_DIR = os.path.dirname(os.path.abspath(__file__))
+PRINT3R_DIR = os.path.join(INSTALL_DIR, "Print3r")
 
 VENV_DIR = os.path.join(INSTALL_DIR, ".venv")
 APP_DIR = INSTALL_DIR  # The repo itself is the app directory
@@ -204,6 +206,97 @@ def setup_environment():
                     success("flaskwebgui already compatible or patched")
         except Exception as e:
             warn(f"Failed to patch flaskwebgui: {e}")
+
+
+# ─── Install Print3r ───────────────────────────────────────────────────────────
+
+def install_print3r():
+    """Clone and install Print3r CLI tool (Perl-based)."""
+    header("Installing Print3r")
+
+    # Check for dependencies
+    step("Checking Print3r dependencies...")
+    deps_found = True
+    
+    # Perl is required
+    if shutil.which("perl") is None:
+        warn("Perl not found - Print3r requires Perl")
+        deps_found = False
+    else:
+        success("Perl found")
+    
+    if shutil.which("openscad") is None:
+        warn("OpenSCAD not found - OpenSCAD model support will be limited")
+        deps_found = False
+    else:
+        success("OpenSCAD found")
+    
+    # CuraEngine is the preferred slicer (much faster than Slic3r)
+    cura_engine = shutil.which("CuraEngine") or shutil.which("curaengine")
+    if cura_engine is None:
+        warn("CuraEngine not found - recommended for fast slicing")
+        deps_found = False
+    else:
+        success(f"CuraEngine found at {cura_engine} (fast slicing enabled)")
+    
+    # Slic3r is optional fallback
+    if shutil.which("slic3r") is None:
+        step("Slic3r not found (optional - CuraEngine is faster)")
+    else:
+        success("Slic3r found (fallback slicer)")
+    
+    if not deps_found:
+        warn("Some Print3r dependencies are missing. Install them for full functionality:")
+        if SYSTEM == "linux":
+            step("  apt: sudo apt install perl openscad cura-engine")
+        elif SYSTEM == "darwin":
+            step("  brew install --cask openscad")
+            step("  brew install curaengine")
+            step("  perl is included with macOS")
+        elif SYSTEM == "windows":
+            step("  winget install StrawberryPerl.StrawberryPerl")
+            step("  winget install OpenSCAD.OpenSCAD")
+            step("  CuraEngine: download from https://github.com/Ultimaker/CuraEngine/releases")
+            step("             or install via MSYS2: pacman -S curaengine")
+
+    # Clone Print3r if not already present
+    if os.path.exists(PRINT3R_DIR):
+        success(f"Print3r already exists at {PRINT3R_DIR}")
+        step("Updating Print3r...")
+        run(["git", "-C", PRINT3R_DIR, "pull"], check=False)
+    else:
+        step(f"Cloning Print3r to {PRINT3R_DIR}...")
+        run(["git", "clone", PRINT3R_REPO_URL, PRINT3R_DIR])
+        success("Print3r cloned successfully")
+
+    # Install Print3r via make (it's a Perl app with Makefile)
+    if os.path.exists(os.path.join(PRINT3R_DIR, "Makefile")):
+        step("Installing Print3r via make...")
+        if SYSTEM == "windows":
+            # Windows may not have make, try dmake or nmake or manual
+            if shutil.which("make") or shutil.which("gmake"):
+                run(["make", "-C", PRINT3R_DIR, "requirements"], check=False)
+                run(["make", "-C", PRINT3R_DIR, "install"], check=False)
+            elif shutil.which("dmake"):
+                run(["dmake", "-C", PRINT3R_DIR, "requirements"], check=False)
+                run(["dmake", "-C", PRINT3R_DIR, "install"], check=False)
+            else:
+                warn("No make found on Windows - install via StrawberryPerl or MSYS2")
+                warn("Print3r can be run directly with: perl print3r")
+        else:
+            run(["make", "-C", PRINT3R_DIR, "requirements"], check=False)
+            run(["make", "-C", PRINT3R_DIR, "install"], check=False)
+        success("Print3r installed")
+    else:
+        warn("Print3r Makefile not found, skipping make install")
+
+    # Verify installation
+    print3r_script = os.path.join(PRINT3R_DIR, "print3r")
+    if os.path.exists(print3r_script):
+        success(f"Print3r is ready at {print3r_script}")
+        step("Run with: perl print3r <options>")
+    else:
+        warn("Print3r installation may be incomplete")
 
 
 # ─── Desktop Integration ─────────────────────────────────────────────────────
@@ -384,6 +477,7 @@ def main():
     check_prerequisites()
     clone_repo()
     setup_environment()
+    install_print3r()
     create_desktop_entry()
 
     header("Installation Complete! 🎉")

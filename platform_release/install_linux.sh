@@ -19,12 +19,23 @@ echo -e "▸ Detected package manager: ${CYAN}$PM${NC}"
 install_deps() {
     echo -e "▸ Installing dependencies..."
     case "$PM" in
-        apt) sudo apt update && sudo apt install -y python3 python3-venv git curl wget ;;
-        dnf) sudo dnf install -y python3 git curl wget ;;
-        pacman) sudo pacman -Sy --noconfirm python git curl wget ;;
-        zypper) sudo zypper install -y python3 git curl wget ;;
+        apt) sudo apt update && sudo apt install -y python3 python3-venv git curl wget perl openscad cura-engine ;;
+        dnf) sudo dnf install -y python3 git curl wget perl openscad CuraEngine ;;
+        pacman) sudo pacman -Sy --noconfirm python git curl wget perl openscad curaengine ;;
+        zypper) sudo zypper install -y python3 git curl wget perl openscad CuraEngine ;;
         *) echo -e "${RED}✗ Unsupported distribution.${NC}"; exit 1 ;;
     esac
+}
+
+# Ensure CuraEngine is available (faster than Slic3r)
+check_curaengine() {
+    if ! command -v CuraEngine &> /dev/null && ! command -v curaengine &> /dev/null; then
+        echo -e "${YELLOW}⚠ CuraEngine not found in PATH${NC}"
+        echo -e "  CuraEngine is significantly faster than Slic3r"
+        echo -e "  Install with: sudo apt install cura-engine (Debian/Ubuntu)"
+    else
+        echo -e "${GREEN}✓ CuraEngine found (fast slicing enabled)${NC}"
+    fi
 }
 
 if ! command -v python3 &> /dev/null || ! command -v git &> /dev/null || ! command -v curl &> /dev/null; then install_deps; fi
