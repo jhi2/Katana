@@ -5,8 +5,14 @@ from configmanager import *
 from validators import ValidationError, validate_printer_profile, validate_selection_data, validate_ip_address
 import requests
 import json as json_module
+import os
+import uuid
+from werkzeug.utils import secure_filename
 app = Flask(__name__)
 config = ConfigManager()
+removed_uploads = config.cleanup_orphan_uploads()
+if removed_uploads > 0:
+    print(f"Startup cleanup: removed {removed_uploads} orphan STL upload(s)")
 with open("teapot.cfg", "r") as f:
     t = f.read().strip() == "True"
 @app.route('/')
@@ -147,6 +153,99 @@ def get_current_config():
     except Exception as e:
         return jsonify({"success": False, "error": "Failed to load config"})
 
+
+@app.route('/api/projects', methods=['GET'])
+def list_projects():
+    try:
+        projects = config.list_projects()
+        return jsonify(projects)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/projects', methods=['POST'])
+def save_project():
+    try:
+        if not request.is_json:
+            return jsonify({"success": False, "error": "Content-Type must be application/json"})
+        
+        data = request.get_json()
+        name = data.get('name', '').strip()
+        project_data = data.get('data')
+        
+        if not name or not project_data:
+            return jsonify({"success": False, "error": "Name and data are required"})
+            
+        success, result = config.save_project(name, project_data)
+        if success:
+            return jsonify({"success": True, "filename": result})
+        else:
+            return jsonify({"success": False, "error": result})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/projects/<filename>', methods=['GET'])
+def load_project(filename):
+    try:
+        project_data = config.load_project(filename)
+        if project_data:
+            return jsonify(project_data)
+        else:
+            return jsonify({"success": False, "error": "Project not found"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/projects/<filename>', methods=['DELETE'])
+def delete_project(filename):
+    try:
+        if config.delete_project(filename):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Project not found or could not be deleted"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/set_project', methods=['POST'])
+def set_project():
+    try:
+        if not request.is_json:
+            return jsonify({"success": False, "error": "Content-Type must be application/json"})
+        
+        data = request.get_json()
+        name = data.get('name', 'Untitled')
+        # This is just a UI session state, maybe save to config later if needed
+        # For now, we'll just acknowledge it
+        return jsonify({"success": True, "name": name})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/upload_model', methods=['POST'])
+def upload_model():
+    try:
+        if 'file' not in request.files:
+            return jsonify({"success": False, "error": "No file part in request"})
+
+        file = request.files['file']
+        if not file or not file.filename:
+            return jsonify({"success": False, "error": "No file selected"})
+
+        filename = secure_filename(file.filename)
+        if not filename.lower().endswith('.stl'):
+            return jsonify({"success": False, "error": "Only .stl files are allowed"})
+
+        base_name, ext = os.path.splitext(filename)
+        unique_name = f"{base_name}_{uuid.uuid4().hex[:8]}{ext.lower()}"
+        upload_dir = os.path.join(app.static_folder, "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+
+        abs_path = os.path.join(upload_dir, unique_name)
+        file.save(abs_path)
+        return jsonify({
+            "success": True,
+            "filename": unique_name,
+            "url": f"/static/uploads/{unique_name}"
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": "Upload failed"})
 
 @app.route('/download_config', methods=['POST'])
 def download_config():

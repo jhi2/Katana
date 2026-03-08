@@ -1,49 +1,29 @@
 {% extends "load.html" %}
 {% block content %}
-<div class="tabs is-primary is-large">
-  <ul>
-    <li id="home-tab" class="is-active">
-      <a onclick="switchTab('home')">
-        <span class="icon is-small"><i class="fas fa-home" aria-hidden="true"></i></span>
-        <span>Home</span>
-      </a>
-    </li>
-    <li id="printers-tab">
-      <a onclick="switchTab('printers')">
-        <span class="icon is-small"><i class="fas fa-cube" aria-hidden="true"></i></span>
-        <span>Slice</span>
-      </a>
-    </li>
-    <li id="videos-tab">
-      <a onclick="switchTab('videos')">
-        <span class="icon is-small"><i class="fas fa-video" aria-hidden="true"></i></span>
-        <span>Monitor</span>
-      </a>
-    </li>
-    <li id="documents-tab">
-      <a onclick="switchTab('documents')">
-        <span class="icon is-small"><i class="fas fa-cog" aria-hidden="true"></i></span>
-        <span>Settings</span>
-      </a>
-    </li>
-  </ul>
-</div>
-
-<div class="container is-fluid" style="padding-top: 2rem;">
-  <div id="home-content" class="tab-content" style="animation: fadeIn 0.5s;">
-  </div>
-
-  <div id="printers-content" class="tab-content">
-  </div>
-
-  <div id="videos-content" class="tab-content">
-  </div>
-
-  <div id="documents-content" class="tab-content">
-  </div>
-</div>
-
 <style>
+  body,
+  .title,
+  .subtitle,
+  .button,
+  .input,
+  select,
+  textarea,
+  .label,
+  .navbar-item {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace !important;
+  }
+
+  /* Keep Font Awesome glyph font intact */
+  .fa,
+  .fas,
+  .far,
+  .fal,
+  .fab,
+  [class^="fa-"],
+  [class*=" fa-"] {
+    font-family: "Font Awesome 5 Free", "Font Awesome 5 Brands" !important;
+  }
+
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -69,84 +49,606 @@
     border-bottom-color: #00d1b2;
     color: #00d1b2;
   }
+
+  .tabs li.is-disabled a {
+    opacity: 0.45;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+
+  .katana-page {
+    padding-top: 2rem;
+  }
+
+  .slicer-tab {
+    position: relative;
+  }
+
+  .slicer-pane {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 250px);
+    min-height: 600px;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 1);
+  }
+
+  .slicer-canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  .project-sidebar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .project-sidebar::-webkit-scrollbar-thumb {
+    background: #00d1b2;
+    border-radius: 3px;
+  }
+
+  .border-primary {
+    border-color: rgba(0, 209, 178, 0.3) !important;
+  }
+
+  .border-primary:focus {
+    border-color: #00d1b2 !important;
+    box-shadow: 0 0 0 0.125em rgba(0, 209, 178, 0.25) !important;
+  }
+
+  .project-card {
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .project-card:hover {
+    transform: translateY(-5px);
+    border-color: #00d1b2;
+    box-shadow: 0 10px 20px rgba(0, 209, 178, 0.1);
+  }
+
+  .floating-tools {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 120;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: rgba(20, 20, 20, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    padding: 0.5rem;
+  }
+
+  .floating-tools .button {
+    width: 42px;
+    height: 42px;
+  }
+
+  .workspace-sidebar {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 300px;
+    z-index: 100;
+    max-height: calc(100% - 40px);
+    overflow-y: auto;
+    background: rgba(20, 20, 20, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px);
+  }
+
+  .status-overlay {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 100;
+    pointer-events: none;
+    padding: 5px 15px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: opacity 0.3s ease;
+  }
+
+  .project-card {
+    overflow: hidden;
+  }
+
+  .project-thumb {
+    height: 150px;
+    position: relative;
+    border-bottom: 2px solid #00d1b2;
+    background-color: #000;
+    background-position: center center;
+    background-size: cover;
+  }
+
+  .project-card-body {
+    padding: 1.25rem;
+  }
+
+  .project-thumb-placeholder {
+    height: 100%;
+  }
 </style>
 
+<div class="tabs is-primary is-large">
+  <ul>
+    <li id="home-tab" class="is-active"><a onclick="switchTab('home')"><span class="icon is-small"><i
+            class="fas fa-home"></i></span><span>Home</span></a></li>
+    <li id="printers-tab" class="is-disabled"><a onclick="switchTab('printers')"><span class="icon is-small"><i
+            class="fas fa-cube"></i></span><span>Slice</span></a></li>
+    <li id="videos-tab"><a onclick="switchTab('videos')"><span class="icon is-small"><i
+            class="fas fa-video"></i></span><span>Monitor</span></a></li>
+    <li id="documents-tab"><a onclick="switchTab('documents')"><span class="icon is-small"><i
+            class="fas fa-cog"></i></span><span>Settings</span></a></li>
+  </ul>
+</div>
+
+<div class="container is-fluid katana-page">
+  <!-- HOME CONTENT -->
+  <div id="home-content" class="tab-content is-active">
+    <div class="level">
+      <div class="level-left">
+        <h2 class="title is-3 has-text-white">Recent Projects</h2>
+      </div>
+      <div class="level-right">
+        <button class="button is-primary" onclick="createNewProject()">
+          <span class="icon"><i class="fas fa-plus"></i></span><span>New Project</span>
+        </button>
+      </div>
+    </div>
+    <hr class="has-background-grey-dark">
+    <div id="project-list" class="columns is-multiline">
+      <div class="column is-12 has-text-centered py-6">
+        <p class="has-text-grey">Loading projects...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLICE CONTENT -->
+  <div id="printers-content" class="tab-content slicer-tab">
+    <div id="slicer-viewport" class="slicer-pane">
+      <div id="slicer-container" class="slicer-canvas"></div>
+      <div class="floating-tools">
+        <button id="tool-move" class="button is-dark is-small is-active" title="Move"
+          onclick="setTransformMode('translate')">
+          <span class="icon is-small"><i class="fas fa-arrows-alt"></i></span>
+        </button>
+        <button id="tool-rotate" class="button is-dark is-small" title="Rotate" onclick="setTransformMode('rotate')">
+          <span class="icon is-small"><i class="fas fa-sync-alt"></i></span>
+        </button>
+        <button id="tool-scale" class="button is-dark is-small" title="Scale" onclick="setTransformMode('scale')">
+          <span class="icon is-small"><i class="fas fa-expand-arrows-alt"></i></span>
+        </button>
+        <button class="button is-danger is-small" title="Delete Selected Model" onclick="deleteSelectedModel()">
+          <span class="icon is-small"><i class="fas fa-trash"></i></span>
+        </button>
+      </div>
+
+      <!-- FLOATING SIDEBAR -->
+      <div id="workspace-sidebar" class="box project-sidebar workspace-sidebar">
+        <h3 class="title is-5 has-text-primary mb-3"><i class="fas fa-cube mr-2"></i>Workspace</h3>
+
+        <div class="field">
+          <label class="label is-small has-text-grey-light">Project Name</label>
+          <div class="control">
+            <input id="active-project-name" class="input is-small has-background-black has-text-white border-primary"
+              type="text" placeholder="Untitled Project" oninput="updateNavbarProjectName(this.value)">
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button class="button is-info is-small is-fullwidth" onclick="saveActiveProject()"><span
+              class="icon is-small"><i class="fas fa-save"></i></span><span>Save Project</span></button>
+          <button class="button is-danger is-outlined is-small is-fullwidth" onclick="clearPlate()"><span
+              class="icon is-small"><i class="fas fa-trash"></i></span><span>Clear Plate</span></button>
+        </div>
+
+        <div class="field mt-3">
+          <label class="label is-small has-text-grey-light">Upload STL</label>
+          <div class="file is-primary is-small is-fullwidth has-name">
+            <label class="file-label">
+              <input id="model-upload" class="file-input" type="file" name="model" accept=".stl">
+              <span class="file-cta">
+                <span class="file-icon"><i class="fas fa-upload"></i></span>
+                <span class="file-label">Choose STL...</span>
+              </span>
+              <span id="model-upload-name" class="file-name">No file selected</span>
+            </label>
+          </div>
+        </div>
+
+        <hr class="has-background-grey-dark my-3">
+
+        <div class="field">
+          <label class="label is-small has-text-grey-light">Plates</label>
+          <div id="plate-controls" class="buttons are-small"></div>
+          <button class="button is-small is-fullwidth is-dark" onclick="addNewPlate()"><span class="icon is-small"><i
+                class="fas fa-folder-plus"></i></span><span>New Plate</span></button>
+        </div>
+      </div>
+
+      <!-- STATUS OVERLAY -->
+      <div id="status-overlay" class="status-overlay">
+        <p id="slicer-status" class="is-size-7 has-text-grey-light">Ready</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="videos-content" class="tab-content"></div>
+  <div id="documents-content" class="tab-content"></div>
+</div>
+
 <script>
-  function switchTab(tabName) {
-    // Remove active class from all tabs
-    document.querySelectorAll('.tabs li').forEach(tab => {
-      tab.classList.remove('is-active');
-    });
+  let slicer = null;
+  let slicerInitPromise = null;
+  let projectReady = false;
+  let suppressAutosave = false;
+  let autosaveTimer = null;
+  let autosaveInFlight = false;
+  let lastAutosaveAt = 0;
 
-    // Hide all content and remove active class
-    document.querySelectorAll('.tab-content').forEach(content => {
-      content.classList.remove('is-active');
-    });
-
-    // Activate selected tab
-    document.getElementById(tabName + '-tab').classList.add('is-active');
-
-    // Show selected content with animation
-    const content = document.getElementById(tabName + '-content');
-    content.classList.add('is-active');
+  function setSliceAccess(enabled) {
+    const sliceTab = document.getElementById('printers-tab');
+    if (!sliceTab) return;
+    projectReady = enabled;
+    sliceTab.classList.toggle('is-disabled', !enabled);
+    if (!enabled && sliceTab.classList.contains('is-active')) {
+      switchTab('home');
+    }
   }
 
-  // Initial setup
-  document.addEventListener('DOMContentLoaded', () => {
-    // Default to home content being active
-    const homeContent = document.getElementById('home-content');
-    if (homeContent) homeContent.classList.add('is-active');
-  });
-
-  // Download config from endpoint (utility for setup flow)
-  async function downloadConfig() {
-    const endpointUrl = document.getElementById('endpoint-url').value.trim();
-    const statusDiv = document.getElementById('download-status');
-
-    if (!endpointUrl) {
-      showStatus(statusDiv, 'Please enter an endpoint URL', 'error');
+  function switchTab(tabName) {
+    if (tabName === 'printers' && !projectReady) {
+      alert('Create or open a project first.');
       return;
     }
+    document.querySelectorAll('.tabs li').forEach(t => t.classList.remove('is-active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('is-active'));
+    document.getElementById(tabName + '-tab').classList.add('is-active');
+    document.getElementById(tabName + '-content').classList.add('is-active');
+    localStorage.setItem('katana_last_tab', tabName);
 
-    // Show loading status
-    showStatus(statusDiv, 'Downloading configuration...', 'info');
+    if (tabName === 'printers') {
+      ensureSlicer().then(() => {
+        if (slicer) {
+          slicer.onResize();
+          requestAnimationFrame(() => slicer.onResize());
+        }
+      });
+    }
+  }
+
+  function queueAutosave() {
+    if (suppressAutosave || !projectReady) return;
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      performAutosave(true);
+    }, 2500);
+  }
+
+  async function performAutosave(silent = true) {
+    if (suppressAutosave || !projectReady || !slicer || autosaveInFlight) return;
+    autosaveInFlight = true;
+
+    const nameInput = document.getElementById('active-project-name');
+    const name = (nameInput && nameInput.value.trim()) || 'Untitled Project';
+    const status = document.getElementById('slicer-status');
 
     try {
-      const response = await fetch('/download_config', {
+      const response = await fetch('/api/projects', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ endpoint_url: endpointUrl })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          data: {
+            models: slicer.exportState(),
+            thumbnail: slicer.getScreenshot()
+          }
+        })
       });
-
       const result = await response.json();
-
       if (result.success) {
-        showStatus(statusDiv, result.message, 'success');
-        setTimeout(() => location.reload(), 1500);
-      } else {
-        showStatus(statusDiv, result.error, 'error');
+        localStorage.setItem('katana_last_project', result.filename);
+        lastAutosaveAt = Date.now();
+        if (status) status.textContent = silent ? `Autosaved ${new Date().toLocaleTimeString()}` : `Saved at ${new Date().toLocaleTimeString()}`;
+        if (!silent) loadProjectList();
+      } else if (!silent) {
+        alert("Save failed: " + result.error);
+      } else if (status) {
+        status.textContent = 'Autosave failed';
       }
-    } catch (error) {
-      showStatus(statusDiv, 'Failed to download config: ' + error.message, 'error');
+    } catch (err) {
+      if (!silent) {
+        alert("Error saving: " + err.message);
+      } else if (status) {
+        status.textContent = 'Autosave failed';
+      }
+    } finally {
+      autosaveInFlight = false;
     }
   }
 
-  // Show status message
-  function showStatus(element, message, type) {
-    if (!element) return;
-    element.textContent = message;
-    element.className = 'notification is-' + type;
-    element.style.display = 'block';
-
-    // Auto-hide after 5 seconds for success/info
-    if (type === 'success' || type === 'info') {
-      setTimeout(() => {
-        element.style.display = 'none';
-      }, 5000);
+  function updateNavbarProjectName(name) {
+    const navbarItem = document.querySelector('.navbar-brand .navbar-item:last-child p');
+    if (navbarItem) {
+      navbarItem.textContent = "Current Project: " + (name || 'Untitled');
     }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    setSliceAccess(false);
+    switchTab('home');
+    loadProjectList();
+
+    const lastProject = localStorage.getItem('katana_last_project');
+    if (lastProject) {
+      await openProject(lastProject, false);
+    }
+
+    const lastTab = localStorage.getItem('katana_last_tab') || 'home';
+    if (lastTab === 'printers' && projectReady) {
+      switchTab('printers');
+      await ensureSlicer();
+    } else {
+      switchTab('home');
+    }
+
+    const uploadInput = document.getElementById('model-upload');
+    const uploadName = document.getElementById('model-upload-name');
+    if (uploadInput && uploadName) {
+      uploadInput.addEventListener('change', async (event) => {
+        const file = event.target.files && event.target.files[0];
+        uploadName.textContent = file ? file.name : 'No file selected';
+        if (file) {
+          await uploadModelFile(file);
+          uploadInput.value = '';
+        }
+      });
+    }
+
+    const nameInput = document.getElementById('active-project-name');
+    if (nameInput) {
+      nameInput.addEventListener('input', () => queueAutosave());
+    }
+
+    window.setInterval(() => {
+      if (!projectReady || !slicer) return;
+      if (Date.now() - lastAutosaveAt < 25000) return;
+      performAutosave(true);
+    }, 30000);
+  });
+
+  async function ensureSlicer() {
+    if (slicer) return slicer;
+    if (slicerInitPromise) return slicerInitPromise;
+    slicerInitPromise = initSlicer().finally(() => { slicerInitPromise = null; });
+    return slicerInitPromise;
+  }
+
+  async function initSlicer() {
+    const container = document.getElementById('slicer-container');
+    if (!container) return;
+    if (slicer) return slicer;
+
+    try {
+      const { default: SlicerUI } = await import('/static/placer.js');
+      const configRes = await fetch('/api/config');
+      const config = await configRes.json();
+      const printer = config.selected_printer || {};
+      const bed = printer.bed_size || [220, 220, 250];
+
+      slicer = new SlicerUI(container, {
+        plateSize: Math.max(bed[0], bed[1]),
+        buildHeight: bed[2] || 250
+      });
+      slicer.onStateChange = () => queueAutosave();
+      slicer.onResize();
+      requestAnimationFrame(() => slicer && slicer.onResize());
+
+      // Restore last project
+      const lastProject = localStorage.getItem('katana_last_project');
+      if (lastProject) {
+        openProject(lastProject, false); // false = don't switch tab
+      }
+
+      updatePlateButtons();
+      return slicer;
+    } catch (err) {
+      console.error("3.JS LOAD FAILURE:", err);
+      document.getElementById('slicer-status').textContent = "ERROR: Three.js Failed to Load";
+      return null;
+    }
+  }
+
+  async function loadProjectList() {
+    const listDiv = document.getElementById('project-list');
+    if (!listDiv) return;
+
+    try {
+      const response = await fetch('/api/projects');
+      const projects = await response.json();
+
+      if (projects.length === 0) {
+        listDiv.innerHTML = '<div class="column is-12 has-text-centered py-6"><p class="has-text-grey">No projects found.</p></div>';
+        return;
+      }
+
+      listDiv.innerHTML = projects.map(p => `
+        <div class="column is-4">
+          <div class="box has-background-grey-darker p-0 project-card">
+            <div class="project-thumb" style="background-image: url('${p.thumbnail || ''}')">
+              ${!p.thumbnail ? '<div class="has-text-grey-darker is-flex is-align-items-center is-justify-content-center project-thumb-placeholder"><i class="fas fa-cube fa-3x"></i></div>' : ''}
+            </div>
+            <div class="project-card-body">
+              <h3 class="title is-5 has-text-white mb-1" title="${p.name}">${p.name}</h3>
+              <p class="is-size-7 has-text-grey-light mb-4"><i class="far fa-clock mr-1"></i>${p.modified}</p>
+              <div class="buttons">
+                <button class="button is-small is-primary is-light" onclick="openProject('${p.filename}')"><span class="icon is-small"><i class="fas fa-folder-open"></i></span><span>Open</span></button>
+                <button class="button is-small is-danger is-outlined" onclick="deleteProject('${p.filename}')"><span class="icon is-small"><i class="fas fa-trash"></i></span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      listDiv.innerHTML = `<div class="notification is-danger">Error: ${err.message}</div>`;
+    }
+  }
+
+  async function openProject(filename, doSwitch = true) {
+    try {
+      suppressAutosave = true;
+      const response = await fetch(`/api/projects/${filename}`);
+      const project = await response.json();
+      if (!project || project.success === false) {
+        throw new Error(project && project.error ? project.error : 'Project not found');
+      }
+
+      localStorage.setItem('katana_last_project', filename);
+      setSliceAccess(true);
+      document.getElementById('active-project-name').value = project.name;
+      updateNavbarProjectName(project.name);
+
+      if (doSwitch) switchTab('printers');
+
+      if (slicer && project.models) {
+        await slicer.importState(project.models);
+      }
+    } catch (err) {
+      if (doSwitch) setSliceAccess(false);
+      console.error("Error opening project:", err);
+    } finally {
+      suppressAutosave = false;
+    }
+  }
+
+  async function createNewProject() {
+    const defaultName = `Project ${new Date().toLocaleString()}`;
+    const name = prompt('Project name:', defaultName);
+    if (!name || !name.trim()) return;
+
+    try {
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), data: { models: [], thumbnail: '' } })
+      });
+      const result = await response.json();
+      if (!result.success) {
+        alert('Create project failed: ' + (result.error || 'unknown error'));
+        return;
+      }
+
+      localStorage.setItem('katana_last_project', result.filename);
+      setSliceAccess(true);
+      const nameInput = document.getElementById('active-project-name');
+      if (nameInput) nameInput.value = name.trim();
+      updateNavbarProjectName(name.trim());
+      await ensureSlicer();
+      switchTab('printers');
+      loadProjectList();
+    } catch (err) {
+      alert('Create project failed: ' + err.message);
+    }
+  }
+
+  async function saveActiveProject() {
+    await performAutosave(false);
+  }
+
+  async function deleteProject(filename) {
+    if (!confirm("Delete this project?")) return;
+    try {
+      const res = await fetch(`/api/projects/${filename}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        if (localStorage.getItem('katana_last_project') === filename) {
+          localStorage.removeItem('katana_last_project');
+          setSliceAccess(false);
+          switchTab('home');
+          updateNavbarProjectName('None');
+        }
+        loadProjectList();
+      }
+    } catch (err) { alert("Delete failed"); }
+  }
+
+  async function uploadModelFile(file) {
+    if (!file) return;
+    await ensureSlicer();
+    if (!slicer) return;
+
+    const status = document.getElementById('slicer-status');
+    if (status) status.textContent = 'Uploading model...';
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/upload_model', {
+        method: 'POST',
+        body: formData
+      });
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+      slicer.loadFromUrl(result.url, file.name);
+      if (status) status.textContent = `Loaded ${file.name}`;
+    } catch (err) {
+      if (status) status.textContent = 'Upload failed';
+      alert(`Upload failed: ${err.message}`);
+    }
+  }
+
+  function clearPlate() {
+    if (confirm("Clear plate?") && slicer) {
+      slicer.clearModels();
+      queueAutosave();
+    }
+  }
+
+  function addNewPlate() { if (slicer) { slicer.addPlate(); updatePlateButtons(); queueAutosave(); } }
+
+  function updatePlateButtons() {
+    const container = document.getElementById('plate-controls');
+    if (!container || !slicer) return;
+    container.innerHTML = slicer.plates.map((p, i) => `
+      <button class="button ${slicer.activePlateIndex === i ? 'is-primary' : 'is-dark'}" onclick="focusPlate(${i})">${i + 1}</button>
+    `).join('');
+  }
+
+  function focusPlate(index) {
+    if (slicer) {
+      slicer.focusPlate(index);
+      updatePlateButtons();
+    }
+  }
+
+  function setTransformMode(mode) {
+    if (!slicer) return;
+    slicer.setTransformMode(mode);
+    ['move', 'rotate', 'scale'].forEach(tool => {
+      const btn = document.getElementById(`tool-${tool}`);
+      if (!btn) return;
+      btn.classList.toggle('is-active', (
+        (tool === 'move' && mode === 'translate') ||
+        (tool === 'rotate' && mode === 'rotate') ||
+        (tool === 'scale' && mode === 'scale')
+      ));
+    });
+  }
+
+  function deleteSelectedModel() {
+    if (!slicer) return;
+    slicer.removeSelectedModel();
+    queueAutosave();
   }
 </script>
-
 {% endblock %}

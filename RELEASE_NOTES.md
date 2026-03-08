@@ -1,5 +1,25 @@
 # Katana Release Notes
 
+## Version 2.0.0
+
+### 🚀 Major Features
+- **Integrated 3D Slicer Workspace**: Added a full Three.js-based slice workspace with multi-plate support, project persistence, and transform controls.
+- **Local Model Upload Pipeline**: Replaced URL-based STL import with server upload flow using Bulma file input and backend upload endpoint.
+- **Project-Gated Slicing Flow**: Slice tab is now locked until a project is created or opened, preventing invalid empty workspace states.
+
+### 🎨 UI & UX
+- **Floating Tool Column**: Added Cura/Prusa-inspired floating slicer tools for move, rotate, scale, and delete-selected actions.
+- **Improved Icon Rendering**: Fixed Font Awesome glyph issues caused by global font overrides.
+- **More Reliable Slicer Startup**: Improved tab visibility/init behavior to avoid blank viewport rendering.
+
+### 🔧 Reliability & Security
+- **Three.js Load Stability**: Vendored Three.js locally and removed duplicate-instance loading paths.
+- **Thumbnail Reliability**: Project thumbnails are now persisted as static PNG files and referenced by stable URLs.
+- **Upload Hygiene**: Added startup cleanup of orphaned uploaded STL files not referenced by any saved project.
+- **Config/Path Hardening**: Improved path handling and safer config write behavior.
+
+---
+
 ## Version 1.0.5
 
 ### 🚀 New Features

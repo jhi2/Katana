@@ -3,6 +3,8 @@ import shutil as sh
 import subprocess as sub
 import json
 import threading
+import base64
+import binascii
 from datetime import datetime
 from validators import validate_file_path, validate_printer_profiles_file
 
@@ -15,18 +17,58 @@ class ConfigManager:
         self._config_mtime = {}
         self._profiles_mtime = {}
         self._lock = threading.Lock()
+        self.base_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Ensure projects directory exists
+        self.projects_dir = os.path.join(self.base_dir, "projects")
+        if not os.path.exists(self.projects_dir):
+            os.makedirs(self.projects_dir)
+        self.thumbnail_dir = os.path.join(self.base_dir, "static", "thumbnails")
+        if not os.path.exists(self.thumbnail_dir):
+            os.makedirs(self.thumbnail_dir)
+        self.uploads_dir = os.path.join(self.base_dir, "static", "uploads")
+        if not os.path.exists(self.uploads_dir):
+            os.makedirs(self.uploads_dir)
+
+    def _resolve_path(self, relative_path):
+        return validate_file_path(relative_path, base_dir=self.base_dir)
+
+    def _resolve_project_path(self, filename):
+        if not isinstance(filename, str) or not filename.endswith(".json"):
+            raise ValueError("Invalid project filename")
+        return validate_file_path(filename, base_dir=self.projects_dir)
+
+    def _thumbnail_relpath(self, safe_name):
+        return f"thumbnails/{safe_name}.png"
+
+    def _thumbnail_abspath(self, safe_name):
+        return validate_file_path(f"{safe_name}.png", base_dir=self.thumbnail_dir)
+
+    def _persist_thumbnail(self, safe_name, thumbnail_data):
+        if not isinstance(thumbnail_data, str) or not thumbnail_data.startswith("data:image/png;base64,"):
+            return ""
+        try:
+            encoded = thumbnail_data.split(",", 1)[1]
+            raw = base64.b64decode(encoded, validate=True)
+            thumb_path = self._thumbnail_abspath(safe_name)
+            with open(thumb_path, "wb") as f:
+                f.write(raw)
+            return "/static/" + self._thumbnail_relpath(safe_name)
+        except (IndexError, ValueError, binascii.Error, OSError):
+            return ""
 
     def check_config(self, dir):
         try:
             # Validate and normalize the file path
-            validated_path = validate_file_path(dir)
+            validated_path = self._resolve_path(dir)
             return os.path.exists(validated_path)
         except Exception:
             return False
+
     def save_config(self, dir):
         try:
             # Validate and normalize the file path
-            validated_path = validate_file_path(dir)
+            validated_path = self._resolve_path(dir)
             
             with self._lock:
                 # Create backup if file exists
@@ -40,18 +82,19 @@ class ConfigManager:
                     json.dump(self.config, f, indent=4)
                 
                 # Atomic move
-                os.rename(temp_path, validated_path)
+                os.replace(temp_path, validated_path)
                 
                 # Update cache
                 self._config_cache[validated_path] = self.config.copy()
                 self._config_mtime[validated_path] = datetime.now().timestamp()
                 
-        except (OSError, IOError, json.JSONEncodeError) as e:
+        except (OSError, IOError, TypeError, ValueError) as e:
             raise Exception(f"Failed to save config: {str(e)}")
+
     def load_config(self, dir):
         try:
             # Validate and normalize the file path
-            validated_path = validate_file_path(dir)
+            validated_path = self._resolve_path(dir)
             
             # Simplified loading without caching for now to debug
             if os.path.exists(validated_path):
@@ -60,7 +103,7 @@ class ConfigManager:
             else:
                 # Create default config
                 self.config = {"printers": []}
-                self.save_config(validated_path)
+                self.save_config(dir)
                     
         except Exception as e:
             # Fallback to default config
@@ -69,7 +112,7 @@ class ConfigManager:
     def load_printer_profiles(self, profiles_dir):
         try:
             # Validate and normalize the file path
-            validated_path = validate_file_path(profiles_dir)
+            validated_path = self._resolve_path(profiles_dir)
             
             # Simplified loading without caching for now to debug
             if os.path.exists(validated_path):
@@ -120,3 +163,116 @@ class ConfigManager:
             return validated_printers
         except Exception:
             return []
+
+    def list_projects(self):
+        try:
+            projects = []
+            if not os.path.exists(self.projects_dir):
+                return []
+                
+            for filename in os.listdir(self.projects_dir):
+                if filename.endswith(".json"):
+                    filepath = os.path.join(self.projects_dir, filename)
+                    with open(filepath, "r") as f:
+                        data = json.load(f)
+                        # Extract metadata
+                        projects.append({
+                            "name": data.get("name", filename.replace(".json", "")),
+                            "filename": filename,
+                            "modified": datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%Y-%m-%d %H:%M:%S"),
+                            "thumbnail": data.get("thumbnail", "")
+                        })
+            return sorted(projects, key=lambda x: x['modified'], reverse=True)
+        except Exception as e:
+            print(f"Error listing projects: {e}")
+            return []
+
+    def save_project(self, name, project_data):
+        try:
+            if not name:
+                raise ValueError("Project name is required")
+            
+            # Clean name for filename
+            safe_name = "".join([c for c in name if c.isalnum() or c in (' ', '.', '_', '-')]).strip()
+            if not safe_name:
+                raise ValueError("Project name contains no valid filename characters")
+            filename = f"{safe_name}.json"
+            filepath = self._resolve_project_path(filename)
+
+            # Persist thumbnail image as a static file for reliable loading.
+            thumb_safe_name = safe_name.replace(" ", "_")
+            thumb_url = self._persist_thumbnail(thumb_safe_name, project_data.get("thumbnail", ""))
+            if thumb_url:
+                project_data["thumbnail"] = thumb_url
+            
+            project_data["name"] = name
+            project_data["last_modified"] = datetime.now().isoformat()
+            
+            with open(filepath, "w") as f:
+                json.dump(project_data, f, indent=4)
+                
+            return True, filename
+        except Exception as e:
+            return False, str(e)
+
+    def load_project(self, filename):
+        try:
+            filepath = self._resolve_project_path(filename)
+            if not os.path.exists(filepath):
+                raise FileNotFoundError(f"Project {filename} not found")
+                
+            with open(filepath, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading project: {e}")
+            return None
+    
+    def delete_project(self, filename):
+        try:
+            filepath = self._resolve_project_path(filename)
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                return True
+            return False
+        except Exception as e:
+            print(f"Error deleting project: {e}")
+            return False
+
+    def cleanup_orphan_uploads(self):
+        try:
+            referenced = set()
+            if os.path.exists(self.projects_dir):
+                for filename in os.listdir(self.projects_dir):
+                    if not filename.endswith(".json"):
+                        continue
+                    project_path = os.path.join(self.projects_dir, filename)
+                    try:
+                        with open(project_path, "r") as f:
+                            project_data = json.load(f)
+                        models = project_data.get("models", [])
+                        if not isinstance(models, list):
+                            continue
+                        for model in models:
+                            if not isinstance(model, dict):
+                                continue
+                            model_url = model.get("url", "")
+                            if isinstance(model_url, str) and model_url.startswith("/static/uploads/"):
+                                referenced.add(model_url.rsplit("/", 1)[-1])
+                    except Exception:
+                        continue
+
+            removed = 0
+            for entry in os.scandir(self.uploads_dir):
+                if not entry.is_file():
+                    continue
+                if not entry.name.lower().endswith(".stl"):
+                    continue
+                if entry.name not in referenced:
+                    try:
+                        os.remove(entry.path)
+                        removed += 1
+                    except OSError:
+                        continue
+            return removed
+        except Exception:
+            return 0

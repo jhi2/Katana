@@ -1,7 +1,8 @@
-import tkinter as tk
 from flaskwebgui import FlaskUI
 from ui import app
 from version import v, sl
+import sys
+import os
 print("""                                                                                                                 
                                                                                                                  
 KKKKKKKKK    KKKKKKK                          tttt                                                               
@@ -95,5 +96,11 @@ def show_splash():
     splash_root.mainloop()
     print("INFO: Splash screen closed")
 
-show_splash()
+if "DISPLAY" in os.environ and "--no-gui" not in sys.argv:
+    try:
+        import tkinter as tk
+        show_splash()
+    except Exception as e:
+        print(f"Skipping splash due to error: {e}")
+
 FlaskUI(server="flask", app=app, extra_flags=["--class=Katana"]).run()
