@@ -8,6 +8,6 @@ venv
 config.json
 *.gcode
 *.stl
-projects
-/static/uploads
-/static/thumbnails
+projects/
+static/uploads/
+static/thumbnails/
