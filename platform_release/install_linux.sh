@@ -40,6 +40,18 @@ check_curaengine() {
 
 if ! command -v python3 &> /dev/null || ! command -v git &> /dev/null || ! command -v curl &> /dev/null; then install_deps; fi
 
+# Ensure OpenSCAD is present even when core deps were already installed.
+if ! command -v openscad &> /dev/null; then
+    echo -e "▸ Installing OpenSCAD..."
+    case "$PM" in
+        apt) sudo apt update && sudo apt install -y openscad ;;
+        dnf) sudo dnf install -y openscad ;;
+        pacman) sudo pacman -Sy --noconfirm openscad ;;
+        zypper) sudo zypper install -y openscad ;;
+        *) echo -e "${YELLOW}⚠ Could not auto-install OpenSCAD for package manager: $PM${NC}" ;;
+    esac
+fi
+
 # Create and enter Katana directory
 INSTALL_DIR="$HOME/Katana"
 echo -e "▸ Creating install directory: ${CYAN}$INSTALL_DIR${NC}"

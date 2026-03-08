@@ -1,5 +1,51 @@
 # Katana Release Notes
 
+## Version 5.0.0
+
+### 🚀 Major Features
+- **Start Slice execution**: Prep modal now launches `print3r -vv` after baking and writes `gcode/<project>.gcode`.
+- **Virtual Preview tab**: After slice succeeds, the new Preview tab unlocks with slider-driven virtual printer view plus G-code metadata.
+
+### 🧰 Tooling & Toolchain
+- **OpenSCAD enforced**: Installers explicitly install OpenSCAD before Print3r so baking works without manual setup.
+- **Explicit Print3r output**: All generated commands pass `-o gcode/<project>.gcode` so preview state is deterministic.
+
+---
+
+## Version 4.0.0
+
+### 🚀 Major Features
+- **Slice Prep Pipeline**: Slice now performs a preparation workflow instead of immediate execution, including profile generation, model preprocessing, and command planning.
+- **Transform Baking for Print3r Inputs**: Project model transforms (position/rotation/scale) are now baked into generated wrapper files under `./baked/<project>/plate_<n>/` and used for command generation.
+- **Per-Plate Command Generation**: The backend now builds one Print3r command per populated build plate with separate output targets.
+
+### 🧭 Workflow UX
+- **Slice Plan Modal**: Added a preflight modal that shows what Slice prep will do before it runs.
+- **Prep Log Modal (Terminal-Style)**: Added live, terminal-style prep output showing generated profile paths, baked files, and prepared command lines.
+- **No Auto-Slice Execution Yet**: Prep flow still intentionally stops before running Print3r.
+
+### 🔧 API & Integration
+- **`/api/print3r/parse_commands`**: Added command parser endpoint that reads project/profile inputs and returns per-plate Print3r argument lists.
+- **Bake Toggle Support**: Parser supports `bake_models` control and defaults to baked model inputs for prep flow.
+
+---
+
+## Version 3.0.0
+
+### 🚀 Major Features
+- **Print3r Profile Generation from Slice**: The Slice action now generates a Print3r printer profile file from the active project and settings without launching Print3r yet.
+- **Profile Path Aligned with Print3r Docs**: Generated printer profiles are written to `./settings/printer/<project>.ini` (with a compatibility copy at `./settings/<project>.ini`) and can be referenced via `--printer=<project>`.
+- **Settings/Profile Separation**: Printer identity and device profile remain in `config.json`, while print tuning values are managed independently in the Settings workflow and profile output.
+
+### 🎛️ Settings Expansion
+- **Expanded Print3r Setting Controls**: Added many additional settings in the Settings modal for Slic3r-focused tuning, including first-layer controls, more speed controls, thickness options, support angle, and fan controls.
+- **Per-Project Settings Persistence**: Settings are stored per project and reapplied when generating profile INI files.
+
+### 🔧 Integration Notes
+- **No Automatic Slicing Execution Yet**: This release prepares the full profile/tuning pipeline and intentionally stops at profile generation.
+
+---
+
 ## Version 2.1.0
 
 ### 🚀 New Features

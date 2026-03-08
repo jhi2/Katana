@@ -229,6 +229,49 @@ def setup_environment():
             warn(f"Failed to patch flaskwebgui: {e}")
 
 
+# ─── Install OpenSCAD ────────────────────────────────────────────────────────
+
+def install_openscad():
+    """Install OpenSCAD if missing (best-effort per platform)."""
+    header("Ensuring OpenSCAD")
+
+    if shutil.which("openscad") is not None:
+        success("OpenSCAD already installed")
+        return
+
+    warn("OpenSCAD not found, attempting installation...")
+
+    if SYSTEM == "linux":
+        if shutil.which("apt"):
+            run(["sudo", "apt", "update"], check=False)
+            run(["sudo", "apt", "install", "-y", "openscad"], check=False)
+        elif shutil.which("dnf"):
+            run(["sudo", "dnf", "install", "-y", "openscad"], check=False)
+        elif shutil.which("pacman"):
+            run(["sudo", "pacman", "-Sy", "--noconfirm", "openscad"], check=False)
+        elif shutil.which("zypper"):
+            run(["sudo", "zypper", "install", "-y", "openscad"], check=False)
+        else:
+            warn("No supported Linux package manager found for automatic OpenSCAD install")
+    elif SYSTEM == "darwin":
+        if shutil.which("brew"):
+            run(["brew", "install", "--cask", "openscad"], check=False)
+        else:
+            warn("Homebrew not found; install OpenSCAD manually")
+    elif SYSTEM == "windows":
+        if shutil.which("winget"):
+            run(["winget", "install", "--id", "OpenSCAD.OpenSCAD", "-e", "--source", "winget"], check=False)
+        else:
+            warn("winget not found; install OpenSCAD manually")
+    else:
+        warn(f"Unsupported platform for automatic OpenSCAD install: {SYSTEM}")
+
+    if shutil.which("openscad") is not None:
+        success("OpenSCAD installed")
+    else:
+        warn("OpenSCAD is still not available in PATH. Some slicing workflows may fail.")
+
+
 # ─── Install Print3r ───────────────────────────────────────────────────────────
 
 def install_print3r():
@@ -498,6 +541,7 @@ def main():
     check_prerequisites()
     clone_repo()
     setup_environment()
+    install_openscad()
     install_print3r()
     create_desktop_entry()
 

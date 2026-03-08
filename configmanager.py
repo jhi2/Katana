@@ -164,6 +164,21 @@ class ConfigManager:
         except Exception:
             return []
 
+    def get_ip_address(self):
+        """Return monitor URL for selected printer, or a blank fallback."""
+        try:
+            selected = self.config.get("selected_printer", {})
+            if not isinstance(selected, dict):
+                return "about:blank"
+            ip = str(selected.get("ip_address", "")).strip()
+            if not ip:
+                return "about:blank"
+            if ip.startswith("http://") or ip.startswith("https://"):
+                return ip
+            return f"http://{ip}"
+        except Exception:
+            return "about:blank"
+
     def list_projects(self):
         try:
             projects = []

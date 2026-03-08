@@ -5,6 +5,7 @@ Input validation functions for Katana printer setup system
 import re
 import os
 import json
+from urllib.parse import urlparse
 from typing import Dict, Any, List, Optional, Tuple
 
 class ValidationError(Exception):
@@ -164,19 +165,49 @@ def validate_printer_profiles_file(file_path: str) -> bool:
         raise ValidationError(f"Failed to validate file: {str(e)}")
 
 def validate_ip_address(ip_address: str) -> str:
-    """Validate IP address format"""
+    """Validate monitor host/url format.
+
+    Accepts:
+    - IPv4: 192.168.1.100
+    - localhost / localhost:7125
+    - hostname / hostname:port
+    - http(s)://<host>[:port][/path]
+    """
     if not ip_address or not isinstance(ip_address, str):
         return ""  # IP address is optional
     
     ip_address = ip_address.strip()
     if not ip_address:
         return ""  # Empty IP address is allowed
-    
-    # Basic IP address validation using regex
-    ip_pattern = r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
-    if not re.match(ip_pattern, ip_address):
-        raise ValidationError("Invalid IP address format. Use format: 192.168.1.100")
-    
+
+    ipv4_pattern = r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+    host_port_pattern = (
+        r'^(localhost|[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*)'
+        r'(?::([0-9]{1,5}))?'
+        r'(?:[/?#].*)?$'
+    )
+
+    if ip_address.startswith(("http://", "https://")):
+        parsed = urlparse(ip_address)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValidationError("Invalid monitor URL. Use http(s)://host[:port]")
+        host = parsed.hostname or ""
+        if not (re.match(ipv4_pattern, host) or re.match(r'^(localhost|[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*)$', host)):
+            raise ValidationError("Invalid monitor URL host")
+        if parsed.port is not None and not (1 <= parsed.port <= 65535):
+            raise ValidationError("Monitor URL port must be between 1 and 65535")
+        return ip_address
+
+    match = re.match(host_port_pattern, ip_address)
+    if not match:
+        raise ValidationError("Invalid address. Use localhost, 192.168.1.100, or host:port")
+
+    port_text = match.group(2)
+    if port_text:
+        port = int(port_text)
+        if not (1 <= port <= 65535):
+            raise ValidationError("Port must be between 1 and 65535")
+
     return ip_address
 
 def validate_printer_name(name: str) -> str:

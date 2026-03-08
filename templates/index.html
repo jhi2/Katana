@@ -80,6 +80,12 @@
     height: 100%;
   }
 
+  .monitor-frame {
+    width: 100%;
+    border: 0;
+    display: block;
+  }
+
   .project-sidebar::-webkit-scrollbar {
     width: 6px;
   }
@@ -214,6 +220,123 @@
     z-index: 300;
   }
 
+  .modal {
+    z-index: 500 !important;
+  }
+
+  .modal .modal-card,
+  .modal .modal-card-title,
+  .modal .modal-card-body,
+  .modal .modal-card-body p,
+  .modal .modal-card-body .label,
+  .modal .modal-card-body .help,
+  .modal .modal-card-body .content {
+    color: #111 !important;
+  }
+
+  #new-project-modal .modal-card,
+  #new-project-modal .modal-card-title,
+  #new-project-modal .label,
+  #new-project-modal .help,
+  #new-project-modal .input {
+    color: #111 !important;
+  }
+
+  .settings-mode-toggle .button.is-active {
+    background-color: #00d1b2;
+    border-color: #00d1b2;
+    color: #111;
+  }
+
+  .slice-terminal {
+    background: #0b0f10;
+    color: #9fffa6;
+    font-family: "JetBrains Mono", "Fira Code", "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    height: 340px;
+    overflow: auto;
+    border-radius: 8px;
+    padding: 0.75rem;
+    white-space: pre-wrap;
+    border: 1px solid #1f2d2f;
+  }
+
+  .slice-plan-box {
+    border: 1px solid rgba(0, 209, 178, 0.35);
+    border-radius: 8px;
+    padding: 0.75rem;
+    background: rgba(0, 209, 178, 0.08);
+  }
+
+  .preview-card {
+    background: rgba(20, 20, 20, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+
+  .preview-printer {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+    height: 360px;
+    margin: 0 auto;
+    border: 2px solid #2b2b2b;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #161616 0%, #0d0d0d 100%);
+    overflow: hidden;
+  }
+
+  .preview-bed {
+    position: absolute;
+    left: 10%;
+    bottom: 10px;
+    width: 80%;
+    height: 16px;
+    background: #2f2f2f;
+    border-radius: 4px;
+  }
+
+  .preview-print {
+    position: absolute;
+    left: 20%;
+    bottom: 26px;
+    width: 60%;
+    height: 0;
+    background: rgba(0, 209, 178, 0.45);
+    border: 1px solid rgba(0, 209, 178, 0.9);
+    border-bottom: 0;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.2s ease;
+  }
+
+  .preview-nozzle {
+    position: absolute;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin-left: -8px;
+    border-radius: 50%;
+    background: #f14668;
+    box-shadow: 0 0 10px rgba(241, 70, 104, 0.6);
+    transition: bottom 0.2s ease;
+  }
+
+  .vertical-slider-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+
+  .vertical-range {
+    -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
+    width: 26px;
+    height: 220px;
+  }
+
   @media screen and (max-width: 1023px) {
     .workspace-sidebar {
       position: static;
@@ -235,6 +358,8 @@
             class="fas fa-home"></i></span><span>Home</span></a></li>
     <li id="printers-tab" class="is-disabled"><a onclick="switchTab('printers')"><span class="icon is-small"><i
             class="fas fa-cube"></i></span><span>Slice</span></a></li>
+    <li id="preview-tab" class="is-disabled"><a onclick="switchTab('preview')"><span class="icon is-small"><i
+            class="fas fa-print"></i></span><span>Preview</span></a></li>
     <li id="videos-tab"><a onclick="switchTab('videos')"><span class="icon is-small"><i
             class="fas fa-video"></i></span><span>Monitor</span></a></li>
     <li id="documents-tab"><a onclick="switchTab('documents')"><span class="icon is-small"><i
@@ -302,14 +427,33 @@
         </div>
 
         <div class="buttons">
-          <button class="button is-primary is-small is-fullwidth" onclick="runSlice()"><span
-              class="icon is-small"><i class="fas fa-layer-group"></i></span><span>Slice</span></button>
+          <button class="button is-primary is-small is-fullwidth" onclick="runSlice()"><span class="icon is-small"><i
+                class="fas fa-layer-group"></i></span><span>Slice</span></button>
+          <button id="support-paint-btn" class="button is-danger is-small is-fullwidth"
+            onclick="toggleSupportPaint()"><span class="icon is-small"><i
+                class="fas fa-paint-brush"></i></span><span>Paint Supports</span></button>
+          <button class="button is-link is-small is-fullwidth" onclick="addProjectText()"><span class="icon is-small"><i
+                class="fas fa-font"></i></span><span>Add Text</span></button>
           <button class="button is-warning is-small is-fullwidth" onclick="openSettingsPlaceholder()"><span
               class="icon is-small"><i class="fas fa-cog"></i></span><span>Open Settings</span></button>
           <button class="button is-info is-small is-fullwidth" onclick="saveActiveProject()"><span
               class="icon is-small"><i class="fas fa-save"></i></span><span>Save Project</span></button>
           <button class="button is-danger is-outlined is-small is-fullwidth" onclick="clearPlate()"><span
               class="icon is-small"><i class="fas fa-trash"></i></span><span>Clear Plate</span></button>
+        </div>
+
+        <div class="field mt-3">
+          <label class="label is-small has-text-grey-light">Project Material</label>
+          <div class="control">
+            <div class="select is-small is-fullwidth">
+              <select id="project-material-select" onchange="changeProjectMaterial(this.value)">
+                <option value="pla">PLA</option>
+                <option value="petg">PETG</option>
+                <option value="abs">ABS</option>
+                <option value="tpu">TPU</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div class="field mt-3">
@@ -343,8 +487,60 @@
     </div>
   </div>
 
-  <div id="videos-content" class="tab-content"></div>
-  <div id="documents-content" class="tab-content"></div>
+  <div id="videos-content" class="tab-content">
+    <!-- MONITOR TAB -->
+    <!-- iFrame courtesy of HTML Basix - www.htmlbasix.com -->
+    <iframe name='iframe1' src='{{ipaddress}}' id='iframe1' class='iframe1 monitor-frame' scrolling='auto'>
+    </iframe>
+    <!-- End iFrame -->
+  </div>
+  <div id="preview-content" class="tab-content">
+    <div class="columns">
+      <div class="column is-7">
+        <div class="preview-card">
+          <h3 class="title is-5 has-text-primary">Virtual Printer Preview</h3>
+          <div class="preview-printer mt-3">
+            <div id="preview-print" class="preview-print"></div>
+            <div id="preview-nozzle" class="preview-nozzle"></div>
+            <div class="preview-bed"></div>
+          </div>
+        </div>
+      </div>
+      <div class="column is-5">
+        <div class="preview-card">
+          <div class="field">
+            <label class="label is-small has-text-grey-light">G-code File</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select id="preview-gcode-select" onchange="onPreviewFileChange(this.value)"></select>
+              </div>
+            </div>
+          </div>
+          <div class="columns mt-2">
+            <div class="column is-6 has-text-centered">
+              <p class="is-size-7 has-text-grey-light mb-2">Layer Progress</p>
+              <div class="vertical-slider-wrap">
+                <input id="preview-layer-slider" class="vertical-range" type="range" min="0" max="100" step="1" value="0"
+                  oninput="updateVirtualPrinter()">
+              </div>
+            </div>
+            <div class="column is-6 has-text-centered">
+              <p class="is-size-7 has-text-grey-light mb-2">Speed Multiplier</p>
+              <div class="vertical-slider-wrap">
+                <input id="preview-speed-slider" class="vertical-range" type="range" min="10" max="200" step="5" value="100"
+                  oninput="updateVirtualPrinter()">
+              </div>
+            </div>
+          </div>
+          <hr class="has-background-grey-dark">
+          <p id="preview-meta" class="is-size-7 has-text-grey-light"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="documents-content" class="tab-content">
+    <p class="text-white">Documents</p>
+  </div>
 </div>
 
 <div id="new-project-modal" class="modal">
@@ -377,9 +573,303 @@
       <p class="modal-card-title">Settings</p>
       <button class="delete" aria-label="close" onclick="closeSettingsPlaceholder()"></button>
     </header>
-    <section class="modal-card-body"></section>
+    <section class="modal-card-body">
+      <p class="is-size-7 has-text-grey mb-4">These settings are stored per project and used to generate <code>./settings/&lt;project&gt;.ini</code> when you press Slice.</p>
+      <div class="field mb-4">
+        <label class="label is-small">Settings Mode</label>
+        <div class="buttons has-addons settings-mode-toggle">
+          <button id="settings-mode-easy" type="button" class="button is-small is-active" onclick="setSettingsMode('easy')">Easy</button>
+          <button id="settings-mode-expert" type="button" class="button is-small" onclick="setSettingsMode('expert')">Expert</button>
+        </div>
+      </div>
+      <div class="columns is-multiline">
+        <div class="column is-6">
+          <label class="label is-small">Nozzle Temp (C)</label>
+          <input id="p3r-temperature" class="input is-small" type="number" min="0" max="500">
+        </div>
+        <div class="column is-6">
+          <label class="label is-small">Bed Temp (C)</label>
+          <input id="p3r-bed-temperature" class="input is-small" type="number" min="0" max="200">
+        </div>
+        <div class="column is-6">
+          <label class="label is-small">Layer Height (mm)</label>
+          <input id="p3r-layer-height" class="input is-small" type="number" step="0.01" min="0.05">
+        </div>
+        <div class="column is-6">
+          <label class="label is-small">First Layer Height (mm)</label>
+          <input id="p3r-first-layer-height" class="input is-small" type="number" step="0.01" min="0.05">
+        </div>
+        <div class="column is-6">
+          <label class="label is-small">Fill Density (%)</label>
+          <input id="p3r-fill-density" class="input is-small" type="number" min="0" max="100">
+          <input id="p3r-fill-density-slider" class="slider is-fullwidth mt-2" type="range" min="0" max="100" step="1">
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">Infill Pattern</label>
+          <div class="select is-small is-fullwidth">
+            <select id="p3r-infill-pattern">
+              <option value="grid">Grid</option>
+              <option value="rectilinear">Rectilinear</option>
+              <option value="lines">Lines</option>
+              <option value="triangles">Triangles</option>
+              <option value="stars">Stars</option>
+              <option value="cubic">Cubic</option>
+              <option value="gyroid">Gyroid</option>
+              <option value="honeycomb">Honeycomb</option>
+              <option value="concentric">Concentric</option>
+              <option value="adaptive_cubic">Adaptive Cubic</option>
+            </select>
+          </div>
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">First Layer Temp (C)</label>
+          <input id="p3r-first-layer-temperature" class="input is-small" type="number" min="0" max="500">
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">First Layer Bed Temp (C)</label>
+          <input id="p3r-first-layer-bed-temperature" class="input is-small" type="number" min="0" max="200">
+        </div>
+        <div class="column is-4">
+          <label class="label is-small">Perimeters</label>
+          <input id="p3r-perimeters" class="input is-small" type="number" min="1" max="10">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Wall Thickness (mm)</label>
+          <input id="p3r-wall-thickness" class="input is-small" type="number" step="0.01" min="0">
+        </div>
+        <div class="column is-4">
+          <label class="label is-small">Top Layers</label>
+          <input id="p3r-top-layers" class="input is-small" type="number" min="0" max="20">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Top Thickness (mm)</label>
+          <input id="p3r-top-thickness" class="input is-small" type="number" step="0.01" min="0">
+        </div>
+        <div class="column is-4">
+          <label class="label is-small">Bottom Layers</label>
+          <input id="p3r-bottom-layers" class="input is-small" type="number" min="0" max="20">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Bottom Thickness (mm)</label>
+          <input id="p3r-bottom-thickness" class="input is-small" type="number" step="0.01" min="0">
+        </div>
+        <div class="column is-4">
+          <label class="label is-small">Print Speed (mm/s)</label>
+          <input id="p3r-print-speed" class="input is-small" type="number" min="1" max="500">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">First Layer Speed (mm/s)</label>
+          <input id="p3r-first-layer-speed" class="input is-small" type="number" min="1" max="500">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Perimeter Speed (mm/s)</label>
+          <input id="p3r-perimeter-speed" class="input is-small" type="number" min="1" max="500">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Small Perimeter Speed (mm/s)</label>
+          <input id="p3r-small-perimeter-speed" class="input is-small" type="number" min="1" max="500">
+        </div>
+        <div class="column is-4">
+          <label class="label is-small">Travel Speed (mm/s)</label>
+          <input id="p3r-travel-speed" class="input is-small" type="number" min="1" max="1000">
+        </div>
+        <div class="column is-4">
+          <label class="label is-small">Infill Speed (mm/s)</label>
+          <input id="p3r-infill-speed" class="input is-small" type="number" min="1" max="500">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Bridge Speed (mm/s)</label>
+          <input id="p3r-bridge-speed" class="input is-small" type="number" min="1" max="500">
+        </div>
+        <div class="column is-6">
+          <label class="label is-small">Retraction Length (mm)</label>
+          <input id="p3r-retraction-length" class="input is-small" type="number" step="0.1" min="0" max="50">
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">Retraction Speed (mm/s)</label>
+          <input id="p3r-retract-speed" class="input is-small" type="number" min="1" max="200">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Skirts</label>
+          <input id="p3r-skirts" class="input is-small" type="number" min="0" max="10">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Brims</label>
+          <input id="p3r-brims" class="input is-small" type="number" min="0" max="30">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Rafts</label>
+          <input id="p3r-rafts" class="input is-small" type="number" min="0" max="10">
+        </div>
+        <div class="column is-6">
+          <label class="label is-small">Support</label>
+          <div class="select is-small is-fullwidth">
+            <select id="p3r-support">
+              <option value="none">None</option>
+              <option value="bed">Bed</option>
+              <option value="everywhere">Everywhere</option>
+            </select>
+          </div>
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">Support Angle (deg)</label>
+          <input id="p3r-support-angle" class="input is-small" type="number" min="0" max="90">
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">Support Density (%)</label>
+          <input id="p3r-support-density" class="input is-small" type="number" min="0" max="100">
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">Support Interface Layers</label>
+          <input id="p3r-support-interface-layers" class="input is-small" type="number" min="0" max="10">
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">Support Z Distance (mm)</label>
+          <input id="p3r-support-z-distance" class="input is-small" type="number" step="0.01" min="0">
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">Support XY Distance (mm)</label>
+          <input id="p3r-support-xy-distance" class="input is-small" type="number" step="0.01" min="0">
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">Support Pattern</label>
+          <div class="select is-small is-fullwidth">
+            <select id="p3r-support-pattern">
+              <option value="grid">Grid</option>
+              <option value="lines">Lines</option>
+              <option value="zigzag">Zigzag</option>
+              <option value="concentric">Concentric</option>
+              <option value="rectilinear">Rectilinear</option>
+              <option value="honeycomb">Honeycomb</option>
+              <option value="gyroid">Gyroid</option>
+              <option value="triangles">Triangles</option>
+              <option value="stars">Stars</option>
+              <option value="cubic">Cubic</option>
+              <option value="snug">Snug</option>
+              <option value="tree">Tree</option>
+            </select>
+          </div>
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">Support Speed (mm/s)</label>
+          <input id="p3r-support-speed" class="input is-small" type="number" min="1" max="500">
+        </div>
+        <div class="column is-6" data-expert-setting="true">
+          <label class="label is-small">Support Interface Speed (mm/s)</label>
+          <input id="p3r-support-interface-speed" class="input is-small" type="number" min="1" max="500">
+        </div>
+        <div class="column is-6">
+          <label class="label is-small">Seam</label>
+          <div class="select is-small is-fullwidth">
+            <select id="p3r-seam">
+              <option value="aligned">Aligned</option>
+              <option value="nearest">Nearest</option>
+              <option value="random">Random</option>
+              <option value="rear">Rear</option>
+            </select>
+          </div>
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Fan Speed (%)</label>
+          <input id="p3r-cool-fan-speed" class="input is-small" type="number" min="0" max="100">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Fan Max (%)</label>
+          <input id="p3r-cool-fan-speed-max" class="input is-small" type="number" min="0" max="100">
+        </div>
+        <div class="column is-4" data-expert-setting="true">
+          <label class="label is-small">Fan Min (%)</label>
+          <input id="p3r-cool-fan-speed-min" class="input is-small" type="number" min="0" max="100">
+        </div>
+      </div>
+    </section>
     <footer class="modal-card-foot">
+      <button class="button is-primary" onclick="saveSettingsPlaceholder()">Save Settings</button>
       <button class="button" onclick="closeSettingsPlaceholder()">Close</button>
+    </footer>
+  </div>
+</div>
+
+<div id="add-text-modal" class="modal">
+  <div class="modal-background" onclick="closeAddTextModal()"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Add Text Label</p>
+      <button class="delete" aria-label="close" onclick="closeAddTextModal()"></button>
+    </header>
+    <section class="modal-card-body">
+      <div class="field">
+        <label class="label">Text</label>
+        <div class="control">
+          <input id="add-text-input" class="input" type="text" maxlength="80" placeholder="Enter text">
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">Style</label>
+        <div class="control">
+          <div class="select is-fullwidth">
+            <select id="add-text-mode-select">
+              <option value="emboss">Emboss (Raised)</option>
+              <option value="deboss">Deboss (Engraved)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-primary" onclick="submitAddTextModal()">Add</button>
+      <button class="button" onclick="closeAddTextModal()">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<div id="message-modal" class="modal">
+  <div class="modal-background" onclick="closeMessageModal()"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p id="message-modal-title" class="modal-card-title">Notice</p>
+      <button class="delete" aria-label="close" onclick="closeMessageModal()"></button>
+    </header>
+    <section class="modal-card-body">
+      <p id="message-modal-body"></p>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-primary" onclick="closeMessageModal()">OK</button>
+    </footer>
+  </div>
+</div>
+
+<div id="slice-plan-modal" class="modal">
+  <div class="modal-background" onclick="closeSlicePlanModal()"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Slice Plan</p>
+      <button class="delete" aria-label="close" onclick="closeSlicePlanModal()"></button>
+    </header>
+    <section class="modal-card-body">
+      <div id="slice-plan-summary" class="slice-plan-box"></div>
+      <p class="is-size-7 has-text-grey mt-3">This step only prepares files and commands. It does not run Print3r yet.</p>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-primary" onclick="confirmSlicePreparation()">Start Prep</button>
+      <button class="button" onclick="closeSlicePlanModal()">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<div id="slice-terminal-modal" class="modal">
+  <div class="modal-background" onclick="closeSliceTerminalModal()"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Slice Preparation Log</p>
+      <button class="delete" aria-label="close" onclick="closeSliceTerminalModal()"></button>
+    </header>
+    <section class="modal-card-body">
+      <div id="slice-terminal-output" class="slice-terminal"></div>
+    </section>
+    <footer class="modal-card-foot">
+      <button id="slice-start-btn" class="button is-primary" onclick="startPreparedSlice()" disabled>Start Slice</button>
+      <button class="button" onclick="closeSliceTerminalModal()">Close</button>
     </footer>
   </div>
 </div>
@@ -393,7 +883,18 @@
   let autosaveInFlight = false;
   let lastAutosaveAt = 0;
   let createProjectModalResolve = null;
+  let addTextModalResolve = null;
   let dragDepth = 0;
+  let supportPaintActive = false;
+  let preparedSliceCommands = [];
+  let preparedSliceProfile = '';
+  let sliceRunning = false;
+  let previewReady = false;
+  let previewFiles = [];
+  let previewMeta = null;
+  const PRINT3R_SETTINGS_KEY_PREFIX = 'katana_print3r_settings::';
+  const SETTINGS_MODE_KEY = 'katana_settings_mode';
+  let settingsMode = localStorage.getItem(SETTINGS_MODE_KEY) || 'easy';
 
   function getPinnedProjects() {
     try {
@@ -435,9 +936,37 @@
     }
   }
 
+  function setPreviewAccess(enabled) {
+    const previewTab = document.getElementById('preview-tab');
+    if (!previewTab) return;
+    previewReady = enabled;
+    previewTab.classList.toggle('is-disabled', !enabled);
+    if (!enabled && previewTab.classList.contains('is-active')) {
+      switchTab('printers');
+    }
+  }
+
+  function resetPreviewState() {
+    setPreviewAccess(false);
+    previewFiles = [];
+    previewMeta = null;
+    populatePreviewFiles([]);
+    const metaEl = document.getElementById('preview-meta');
+    if (metaEl) metaEl.textContent = '';
+    const layer = document.getElementById('preview-layer-slider');
+    const speed = document.getElementById('preview-speed-slider');
+    if (layer) layer.value = '0';
+    if (speed) speed.value = '100';
+    updateVirtualPrinter();
+  }
+
   function switchTab(tabName) {
     if (tabName === 'printers' && !projectReady) {
-      alert('Create or open a project first.');
+      showMessageModal('Create or open a project first.');
+      return;
+    }
+    if (tabName === 'preview' && !previewReady) {
+      showMessageModal('Run slicing first to unlock Preview.');
       return;
     }
     document.querySelectorAll('.tabs li').forEach(t => t.classList.remove('is-active'));
@@ -455,6 +984,10 @@
           requestAnimationFrame(() => slicer.onResize());
         }
       });
+    }
+    if (tabName === 'videos') {
+      resizeMonitorFrame();
+      setTimeout(resizeMonitorFrame, 60);
     }
   }
 
@@ -494,13 +1027,13 @@
         if (status) status.textContent = silent ? `Autosaved ${new Date().toLocaleTimeString()}` : `Saved at ${new Date().toLocaleTimeString()}`;
         if (!silent) loadProjectList();
       } else if (!silent) {
-        alert("Save failed: " + result.error);
+        showMessageModal("Save failed: " + result.error, "Save Error");
       } else if (status) {
         status.textContent = 'Autosave failed';
       }
     } catch (err) {
       if (!silent) {
-        alert("Error saving: " + err.message);
+        showMessageModal("Error saving: " + err.message, "Save Error");
       } else if (status) {
         status.textContent = 'Autosave failed';
       }
@@ -516,8 +1049,26 @@
     }
   }
 
+  function bindGlobalShortcuts() {
+    document.addEventListener('keydown', async (event) => {
+      const isSave = (event.key === 's' || event.key === 'S') && (event.ctrlKey || event.metaKey);
+      if (!isSave) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!projectReady) {
+        showMessageModal('Create or open a project first.', 'Save Project');
+        return;
+      }
+      await saveActiveProject();
+      const status = document.getElementById('slicer-status');
+      if (status) status.textContent = `Saved via keyboard shortcut at ${new Date().toLocaleTimeString()}`;
+    }, true);
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
+    bindGlobalShortcuts();
     setSliceAccess(false);
+    resetPreviewState();
     switchTab('home');
     loadProjectList();
 
@@ -552,6 +1103,11 @@
       nameInput.addEventListener('input', () => queueAutosave());
     }
 
+    const materialSelect = document.getElementById('project-material-select');
+    if (materialSelect) {
+      materialSelect.addEventListener('change', () => queueAutosave());
+    }
+
     window.setInterval(() => {
       if (!projectReady || !slicer) return;
       if (Date.now() - lastAutosaveAt < 25000) return;
@@ -571,12 +1127,27 @@
         }
       });
     }
+    const addTextInput = document.getElementById('add-text-input');
+    if (addTextInput) {
+      addTextInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          submitAddTextModal();
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeAddTextModal();
+        }
+      });
+    }
     initDragDropUpload();
     window.addEventListener('resize', () => {
       resizeSlicerViewport();
+      resizeMonitorFrame();
       if (slicer) slicer.onResize();
     });
     resizeSlicerViewport();
+    resizeMonitorFrame();
   });
 
   function resizeSlicerViewport() {
@@ -586,6 +1157,15 @@
     const minHeight = 320;
     const nextHeight = Math.max(minHeight, Math.ceil(window.innerHeight - rect.top));
     pane.style.height = `${nextHeight}px`;
+  }
+
+  function resizeMonitorFrame() {
+    const frame = document.getElementById('iframe1');
+    if (!frame) return;
+    const rect = frame.getBoundingClientRect();
+    const minHeight = 320;
+    const nextHeight = Math.max(minHeight, Math.ceil(window.innerHeight - rect.top));
+    frame.style.height = `${nextHeight}px`;
   }
 
   function setDropzoneActive(active) {
@@ -640,7 +1220,7 @@
       dragDepth = 0;
       setDropzoneActive(false);
       if (!projectReady) {
-        alert('Create or open a project first.');
+        showMessageModal('Create or open a project first.');
         return;
       }
       await handleDroppedFiles(event.dataTransfer.files);
@@ -681,6 +1261,150 @@
     closeCreateProjectModal(name);
   }
 
+  function openAddTextModal(defaultText = "") {
+    const modal = document.getElementById('add-text-modal');
+    const input = document.getElementById('add-text-input');
+    if (!modal || !input) return Promise.resolve(null);
+    input.value = defaultText;
+    modal.classList.add('is-active');
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+    return new Promise((resolve) => {
+      addTextModalResolve = resolve;
+    });
+  }
+
+  function closeAddTextModal(payload = null) {
+    const modal = document.getElementById('add-text-modal');
+    if (modal) modal.classList.remove('is-active');
+    if (addTextModalResolve) {
+      const resolve = addTextModalResolve;
+      addTextModalResolve = null;
+      resolve(payload);
+    }
+  }
+
+  function submitAddTextModal() {
+    const input = document.getElementById('add-text-input');
+    const modeSelect = document.getElementById('add-text-mode-select');
+    const text = input ? input.value.trim() : '';
+    if (!text) return;
+    closeAddTextModal({
+      text,
+      mode: modeSelect ? modeSelect.value : "emboss"
+    });
+  }
+
+  function showMessageModal(message, title = "Notice") {
+    const modal = document.getElementById('message-modal');
+    const body = document.getElementById('message-modal-body');
+    const titleEl = document.getElementById('message-modal-title');
+    if (!modal || !body || !titleEl) return;
+    titleEl.textContent = title;
+    body.textContent = message;
+    modal.classList.add('is-active');
+  }
+
+  function closeMessageModal() {
+    const modal = document.getElementById('message-modal');
+    if (modal) modal.classList.remove('is-active');
+  }
+
+  function openSliceTerminalModal() {
+    const modal = document.getElementById('slice-terminal-modal');
+    if (modal) modal.classList.add('is-active');
+  }
+
+  function closeSliceTerminalModal() {
+    const modal = document.getElementById('slice-terminal-modal');
+    if (modal) modal.classList.remove('is-active');
+  }
+
+  function clearSliceTerminal() {
+    const out = document.getElementById('slice-terminal-output');
+    if (!out) return;
+    out.textContent = '';
+  }
+
+  function appendSliceTerminal(line = '') {
+    const out = document.getElementById('slice-terminal-output');
+    if (!out) return;
+    const text = String(line);
+    out.textContent += text.endsWith('\n') ? text : `${text}\n`;
+    out.scrollTop = out.scrollHeight;
+  }
+
+  function setSliceStartEnabled(enabled) {
+    const btn = document.getElementById('slice-start-btn');
+    if (!btn) return;
+    btn.disabled = !enabled;
+    if (!enabled) {
+      btn.classList.remove('is-loading');
+    }
+  }
+
+  function setSliceStartLoading(loading) {
+    const btn = document.getElementById('slice-start-btn');
+    if (!btn) return;
+    btn.classList.toggle('is-loading', !!loading);
+    btn.disabled = !!loading;
+  }
+
+  async function openSlicePlanModal() {
+    if (!projectReady) {
+      showMessageModal('Create or open a project first.', 'Slice');
+      return;
+    }
+    const modal = document.getElementById('slice-plan-modal');
+    const summary = document.getElementById('slice-plan-summary');
+    if (!modal || !summary) return;
+
+    const projectName = getActiveProjectName();
+    const projectFilename = localStorage.getItem('katana_last_project') || '';
+    let modelCount = 0;
+    let plateCount = 1;
+
+    if (projectFilename) {
+      try {
+        const response = await fetch(`/api/projects/${projectFilename}`);
+        const project = await response.json();
+        const modelBlock = project && project.models ? project.models : {};
+        const models = Array.isArray(modelBlock.models) ? modelBlock.models : [];
+        modelCount = models.length;
+        plateCount = Math.max(1, parseInt(modelBlock.plateCount || 1, 10));
+      } catch (err) {
+        modelCount = 0;
+        plateCount = 1;
+      }
+    }
+
+    summary.innerHTML = [
+      `<p><strong>Project:</strong> ${projectName}</p>`,
+      `<p><strong>Profile Target:</strong> ./settings/printer/${projectName.replace(/\s+/g, '_')}.ini</p>`,
+      `<p><strong>Detected Models:</strong> ${modelCount}</p>`,
+      `<p><strong>Detected Plates:</strong> ${plateCount}</p>`,
+      `<hr class="my-2">`,
+      `<p>1. Generate/update the Print3r profile INI from Settings.</p>`,
+      `<p>2. Bake model transforms into <code>./baked/&lt;project&gt;/plate_n/</code>.</p>`,
+      `<p>3. Build one Print3r command per populated plate.</p>`,
+      `<p>4. Show full prep log and command lines.</p>`
+    ].join('');
+
+    modal.classList.add('is-active');
+  }
+
+  function closeSlicePlanModal() {
+    const modal = document.getElementById('slice-plan-modal');
+    if (modal) modal.classList.remove('is-active');
+  }
+
+  function confirmSlicePreparation() {
+    closeSlicePlanModal();
+    runSliceGenerateProfile();
+  }
+
   async function ensureSlicer() {
     if (slicer) return slicer;
     if (slicerInitPromise) return slicerInitPromise;
@@ -705,6 +1429,10 @@
         buildHeight: bed[2] || 250
       });
       slicer.onValidationChange = (issues) => updateGeometryWarning(issues);
+      const materialSelect = document.getElementById('project-material-select');
+      if (materialSelect) {
+        materialSelect.value = slicer.getProjectMaterial();
+      }
       resizeSlicerViewport();
       slicer.onStateChange = () => queueAutosave();
       slicer.onResize();
@@ -773,6 +1501,7 @@
   async function openProject(filename, doSwitch = true) {
     try {
       suppressAutosave = true;
+      resetPreviewState();
       const response = await fetch(`/api/projects/${filename}`);
       const project = await response.json();
       if (!project || project.success === false) {
@@ -788,6 +1517,8 @@
 
       if (slicer && project.models) {
         await slicer.importState(project.models);
+        const materialSelect = document.getElementById('project-material-select');
+        if (materialSelect) materialSelect.value = slicer.getProjectMaterial();
       }
     } catch (err) {
       if (doSwitch) setSliceAccess(false);
@@ -810,12 +1541,13 @@
       });
       const result = await response.json();
       if (!result.success) {
-        alert('Create project failed: ' + (result.error || 'unknown error'));
+        showMessageModal('Create project failed: ' + (result.error || 'unknown error'), 'Create Project');
         return;
       }
 
       localStorage.setItem('katana_last_project', result.filename);
       setSliceAccess(true);
+      resetPreviewState();
       const nameInput = document.getElementById('active-project-name');
       if (nameInput) nameInput.value = name.trim();
       updateNavbarProjectName(name.trim());
@@ -823,7 +1555,7 @@
       switchTab('printers');
       loadProjectList();
     } catch (err) {
-      alert('Create project failed: ' + err.message);
+      showMessageModal('Create project failed: ' + err.message, 'Create Project');
     }
   }
 
@@ -845,7 +1577,7 @@
         }
         loadProjectList();
       }
-    } catch (err) { alert("Delete failed"); }
+    } catch (err) { showMessageModal("Delete failed", "Delete Project"); }
   }
 
   async function uploadModelFile(file) {
@@ -883,7 +1615,7 @@
       }
     } catch (err) {
       if (status) status.textContent = 'Upload failed';
-      alert(`Upload failed: ${err.message}`);
+      showMessageModal(`Upload failed: ${err.message}`, "Upload Error");
     }
   }
 
@@ -913,6 +1645,9 @@
 
   function setTransformMode(mode) {
     if (!slicer) return;
+    supportPaintActive = false;
+    const supportBtn = document.getElementById('support-paint-btn');
+    if (supportBtn) supportBtn.classList.remove('is-warning');
     slicer.setTransformMode(mode);
     ['move', 'rotate', 'scale'].forEach(tool => {
       const btn = document.getElementById(`tool-${tool}`);
@@ -923,6 +1658,39 @@
         (tool === 'scale' && mode === 'scale')
       ));
     });
+  }
+
+  function toggleSupportPaint() {
+    if (!slicer) return;
+    supportPaintActive = !supportPaintActive;
+    const btn = document.getElementById('support-paint-btn');
+    if (btn) {
+      btn.classList.toggle('is-warning', supportPaintActive);
+    }
+    slicer.setToolMode(supportPaintActive ? 'supportPaint' : 'transform');
+    const status = document.getElementById('slicer-status');
+    if (status) {
+      status.textContent = supportPaintActive
+        ? 'Support paint mode: click faces to mark support, shift-click to erase'
+        : 'Support paint mode off';
+    }
+  }
+
+  async function addProjectText() {
+    if (!slicer) return;
+    const payload = await openAddTextModal('');
+    if (!payload || !payload.text || !payload.text.trim()) return;
+    slicer.startTextPlacement(payload.text.trim(), payload.mode || "emboss");
+    const status = document.getElementById('slicer-status');
+    if (status) {
+      status.textContent = `Click a model surface to place ${payload.mode === 'deboss' ? 'debossed' : 'embossed'} text`;
+    }
+  }
+
+  function changeProjectMaterial(materialKey) {
+    if (!slicer) return;
+    slicer.setProjectMaterial(materialKey);
+    queueAutosave();
   }
 
   function deleteSelectedModel() {
@@ -952,12 +1720,440 @@
   }
 
   function runSlice() {
-    alert("no slicer yet");
+    openSlicePlanModal();
   }
 
-  function openSettingsPlaceholder() {
+  function getActiveProjectName() {
+    const input = document.getElementById('active-project-name');
+    const value = input ? input.value.trim() : '';
+    return value || 'Untitled Project';
+  }
+
+  function getPrint3rSettingsKey() {
+    const filename = localStorage.getItem('katana_last_project');
+    if (filename && filename.trim()) {
+      return PRINT3R_SETTINGS_KEY_PREFIX + filename.trim();
+    }
+    return PRINT3R_SETTINGS_KEY_PREFIX + getActiveProjectName();
+  }
+
+  function collectPrint3rSettingsFromForm() {
+    const num = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      if (el.value === '') return null;
+      return Number(el.value);
+    };
+    const txt = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      return el.value;
+    };
+    return {
+      temperature: num('p3r-temperature'),
+      bed_temperature: num('p3r-bed-temperature'),
+      layer_height: num('p3r-layer-height'),
+      first_layer_height: num('p3r-first-layer-height'),
+      first_layer_temperature: num('p3r-first-layer-temperature'),
+      first_layer_bed_temperature: num('p3r-first-layer-bed-temperature'),
+      fill_density: num('p3r-fill-density'),
+      infill_pattern: txt('p3r-infill-pattern'),
+      perimeters: num('p3r-perimeters'),
+      wall_thickness: num('p3r-wall-thickness'),
+      top_layers: num('p3r-top-layers'),
+      top_thickness: num('p3r-top-thickness'),
+      bottom_layers: num('p3r-bottom-layers'),
+      bottom_thickness: num('p3r-bottom-thickness'),
+      print_speed: num('p3r-print-speed'),
+      first_layer_speed: num('p3r-first-layer-speed'),
+      perimeter_speed: num('p3r-perimeter-speed'),
+      small_perimeter_speed: num('p3r-small-perimeter-speed'),
+      travel_speed: num('p3r-travel-speed'),
+      infill_speed: num('p3r-infill-speed'),
+      bridge_speed: num('p3r-bridge-speed'),
+      retraction_length: num('p3r-retraction-length'),
+      retract_speed: num('p3r-retract-speed'),
+      skirts: num('p3r-skirts'),
+      brims: num('p3r-brims'),
+      rafts: num('p3r-rafts'),
+      support: txt('p3r-support'),
+      support_angle: num('p3r-support-angle'),
+      support_density: num('p3r-support-density'),
+      support_interface_layers: num('p3r-support-interface-layers'),
+      support_z_distance: num('p3r-support-z-distance'),
+      support_xy_distance: num('p3r-support-xy-distance'),
+      support_pattern: txt('p3r-support-pattern'),
+      support_speed: num('p3r-support-speed'),
+      support_interface_speed: num('p3r-support-interface-speed'),
+      seam: txt('p3r-seam'),
+      cool_fan_speed: num('p3r-cool-fan-speed'),
+      cool_fan_speed_max: num('p3r-cool-fan-speed-max'),
+      cool_fan_speed_min: num('p3r-cool-fan-speed-min')
+    };
+  }
+
+  function applyPrint3rSettingsToForm(settings = {}) {
+    const set = (id, key) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const value = settings[key];
+      if (value === undefined || value === null) return;
+      el.value = String(value);
+    };
+    set('p3r-temperature', 'temperature');
+    set('p3r-bed-temperature', 'bed_temperature');
+    set('p3r-layer-height', 'layer_height');
+    set('p3r-first-layer-height', 'first_layer_height');
+    set('p3r-first-layer-temperature', 'first_layer_temperature');
+    set('p3r-first-layer-bed-temperature', 'first_layer_bed_temperature');
+    set('p3r-fill-density', 'fill_density');
+    set('p3r-infill-pattern', 'infill_pattern');
+    set('p3r-perimeters', 'perimeters');
+    set('p3r-wall-thickness', 'wall_thickness');
+    set('p3r-top-layers', 'top_layers');
+    set('p3r-top-thickness', 'top_thickness');
+    set('p3r-bottom-layers', 'bottom_layers');
+    set('p3r-bottom-thickness', 'bottom_thickness');
+    set('p3r-print-speed', 'print_speed');
+    set('p3r-first-layer-speed', 'first_layer_speed');
+    set('p3r-perimeter-speed', 'perimeter_speed');
+    set('p3r-small-perimeter-speed', 'small_perimeter_speed');
+    set('p3r-travel-speed', 'travel_speed');
+    set('p3r-infill-speed', 'infill_speed');
+    set('p3r-bridge-speed', 'bridge_speed');
+    set('p3r-retraction-length', 'retraction_length');
+    set('p3r-retract-speed', 'retract_speed');
+    set('p3r-skirts', 'skirts');
+    set('p3r-brims', 'brims');
+    set('p3r-rafts', 'rafts');
+    set('p3r-support', 'support');
+    set('p3r-seam', 'seam');
+    set('p3r-support-angle', 'support_angle');
+    set('p3r-support-density', 'support_density');
+    set('p3r-support-interface-layers', 'support_interface_layers');
+    set('p3r-support-z-distance', 'support_z_distance');
+    set('p3r-support-xy-distance', 'support_xy_distance');
+    set('p3r-support-pattern', 'support_pattern');
+    set('p3r-support-speed', 'support_speed');
+    set('p3r-support-interface-speed', 'support_interface_speed');
+    set('p3r-cool-fan-speed', 'cool_fan_speed');
+    set('p3r-cool-fan-speed-max', 'cool_fan_speed_max');
+    set('p3r-cool-fan-speed-min', 'cool_fan_speed_min');
+    syncFillDensitySlider();
+  }
+
+  function syncFillDensitySlider() {
+    const numberInput = document.getElementById('p3r-fill-density');
+    const slider = document.getElementById('p3r-fill-density-slider');
+    if (!numberInput || !slider) return;
+    const value = Math.max(0, Math.min(100, Number(numberInput.value || 0)));
+    numberInput.value = String(value);
+    slider.value = String(value);
+  }
+
+  function setSettingsMode(mode) {
+    settingsMode = (mode === 'expert') ? 'expert' : 'easy';
+    localStorage.setItem(SETTINGS_MODE_KEY, settingsMode);
+
+    const easyBtn = document.getElementById('settings-mode-easy');
+    const expertBtn = document.getElementById('settings-mode-expert');
+    if (easyBtn) easyBtn.classList.toggle('is-active', settingsMode === 'easy');
+    if (expertBtn) expertBtn.classList.toggle('is-active', settingsMode === 'expert');
+
+    document.querySelectorAll('[data-expert-setting="true"]').forEach((el) => {
+      el.style.display = (settingsMode === 'expert') ? '' : 'none';
+    });
+  }
+
+  async function fetchPrint3rDefaultSettings() {
+    const response = await fetch('/api/print3r/default_settings');
+    const result = await response.json();
+    if (!result || result.success === false) {
+      throw new Error(result && result.error ? result.error : 'Failed to load defaults');
+    }
+    return result.settings || {};
+  }
+
+  async function loadPrint3rSettingsForCurrentProject() {
+    const defaults = await fetchPrint3rDefaultSettings();
+    let saved = {};
+    try {
+      const raw = localStorage.getItem(getPrint3rSettingsKey());
+      saved = raw ? JSON.parse(raw) : {};
+    } catch (err) {
+      saved = {};
+    }
+    return Object.assign({}, defaults, saved);
+  }
+
+  async function runSliceGenerateProfile() {
+    if (!projectReady) {
+      showMessageModal('Create or open a project first.', 'Slice');
+      return;
+    }
+    openSliceTerminalModal();
+    clearSliceTerminal();
+    setPreviewAccess(false);
+    preparedSliceCommands = [];
+    preparedSliceProfile = '';
+    setSliceStartEnabled(false);
+    appendSliceTerminal('[katana] slice prepare started');
+    const projectName = getActiveProjectName();
+    let settings;
+    try {
+      settings = await loadPrint3rSettingsForCurrentProject();
+      appendSliceTerminal(`[katana] loaded settings for "${projectName}"`);
+    } catch (err) {
+      appendSliceTerminal(`[error] settings load failed: ${err.message}`);
+      showMessageModal(`Could not load settings: ${err.message}`, 'Slice');
+      return;
+    }
+
+    try {
+      appendSliceTerminal('[katana] generating printer profile...');
+      const generateRes = await fetch('/api/print3r/generate_profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_name: projectName,
+          settings
+        })
+      });
+      const generated = await generateRes.json();
+      if (!generated.success) {
+        throw new Error(generated.error || 'Failed to generate profile');
+      }
+      appendSliceTerminal(`[ok] profile: ${generated.path}`);
+
+      appendSliceTerminal('[katana] baking transformed models and parsing commands...');
+      const parseRes = await fetch('/api/print3r/parse_commands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_name: projectName,
+          profile_name: generated.profile_name,
+          slicer: 'slic3r',
+          bake_models: true
+        })
+      });
+      const parsedPayload = await parseRes.json();
+      if (!parsedPayload.success) {
+        throw new Error(parsedPayload.error || 'Failed to parse commands');
+      }
+      const parsed = parsedPayload.parsed || {};
+      const commands = Array.isArray(parsed.commands) ? parsed.commands : [];
+      preparedSliceCommands = commands;
+      preparedSliceProfile = parsed.profile_name || generated.profile_name || '';
+      appendSliceTerminal(`[ok] prepared ${commands.length} plate command(s)`);
+      commands.forEach((cmd, idx) => {
+        appendSliceTerminal(``);
+        appendSliceTerminal(`[plate ${cmd.plate_index + 1}] output: ${cmd.output_gcode}`);
+        if (cmd.baked_dir) appendSliceTerminal(`[plate ${cmd.plate_index + 1}] baked dir: ${cmd.baked_dir}`);
+        const models = Array.isArray(cmd.models) ? cmd.models : [];
+        models.forEach((m) => appendSliceTerminal(`  baked> ${m}`));
+        appendSliceTerminal(`  argv> ${Array.isArray(cmd.argv) ? cmd.argv.join(' ') : ''}`);
+      });
+      appendSliceTerminal('');
+      appendSliceTerminal('[katana] done. ready to slice.');
+      if (commands.length > 0) {
+        appendSliceTerminal('[katana] click "Start Slice" to run print3r -vv.');
+        setSliceStartEnabled(true);
+      } else {
+        appendSliceTerminal('[katana] no plate commands were generated.');
+      }
+
+      const status = document.getElementById('slicer-status');
+      const profileRef = generated.profile_name ? `--printer=${generated.profile_name}` : '';
+      if (status) status.textContent = `Prepared ${commands.length} plate command(s) ${profileRef}`;
+      showMessageModal(
+        `Prepared ${commands.length} plate command(s) with baked models.\nUse Start Slice in the prep log to execute print3r -vv.\n\nReference with:\n${profileRef || '--printer=<profile>'}`,
+        'Slice'
+      );
+    } catch (err) {
+      appendSliceTerminal(`[error] ${err.message}`);
+      setSliceStartEnabled(false);
+      showMessageModal(`Slice failed: ${err.message}`, 'Slice');
+    }
+  }
+
+  async function streamPrint3rCommand(cmd) {
+    const response = await fetch('/api/print3r/stream_run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ argv: cmd.argv })
+    });
+
+    if (!response.ok) {
+      const maybe = await response.text();
+      throw new Error(maybe || `Command failed with HTTP ${response.status}`);
+    }
+
+    if (!response.body) {
+      const text = await response.text();
+      appendSliceTerminal(text || '[katana] no output stream returned');
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      appendSliceTerminal(decoder.decode(value, { stream: true }));
+    }
+  }
+
+  function derivePreviewFilesFromCommands(commands) {
+    const files = [];
+    (commands || []).forEach((cmd) => {
+      const out = cmd && cmd.output_gcode ? String(cmd.output_gcode) : '';
+      if (!out) return;
+      const name = out.split('/').pop();
+      if (name && !files.includes(name)) files.push(name);
+    });
+    return files;
+  }
+
+  async function loadPreviewMetadata(filename) {
+    const response = await fetch(`/api/gcode/preview/${encodeURIComponent(filename)}`);
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to load preview metadata');
+    }
+    previewMeta = result.metadata || null;
+    const metaEl = document.getElementById('preview-meta');
+    if (metaEl && previewMeta) {
+      metaEl.textContent = [
+        `File: ${result.filename}`,
+        `Lines: ${previewMeta.line_count}`,
+        `Layers: ${previewMeta.layer_count}`,
+        `Bounds: ${previewMeta.max_x} x ${previewMeta.max_y} x ${previewMeta.max_z} mm`,
+        `Extrusion: ${previewMeta.max_extrusion}`
+      ].join(' | ');
+    }
+    updateVirtualPrinter();
+  }
+
+  async function onPreviewFileChange(filename) {
+    if (!filename) return;
+    try {
+      await loadPreviewMetadata(filename);
+    } catch (err) {
+      showMessageModal(`Preview load failed: ${err.message}`, 'Preview');
+    }
+  }
+
+  function populatePreviewFiles(files) {
+    previewFiles = files || [];
+    const select = document.getElementById('preview-gcode-select');
+    if (!select) return;
+    if (previewFiles.length === 0) {
+      select.innerHTML = '<option value="">No gcode files</option>';
+      return;
+    }
+    select.innerHTML = previewFiles
+      .map((f) => `<option value="${f}">${f}</option>`)
+      .join('');
+  }
+
+  function updateVirtualPrinter() {
+    const printEl = document.getElementById('preview-print');
+    const nozzleEl = document.getElementById('preview-nozzle');
+    const layerSlider = document.getElementById('preview-layer-slider');
+    const speedSlider = document.getElementById('preview-speed-slider');
+    if (!printEl || !nozzleEl || !layerSlider || !speedSlider) return;
+
+    const progress = Math.max(0, Math.min(100, Number(layerSlider.value || 0))) / 100;
+    const speed = Math.max(10, Math.min(200, Number(speedSlider.value || 100))) / 100;
+    const maxHeight = 300;
+    const printHeight = Math.max(0, Math.round(maxHeight * progress));
+    printEl.style.height = `${printHeight}px`;
+    nozzleEl.style.bottom = `${24 + printHeight}px`;
+
+    const duration = Math.max(0.05, 0.25 / speed);
+    printEl.style.transitionDuration = `${duration}s`;
+    nozzleEl.style.transitionDuration = `${duration}s`;
+  }
+
+  async function startPreparedSlice() {
+    if (sliceRunning) return;
+    if (!preparedSliceCommands || preparedSliceCommands.length === 0) {
+      showMessageModal('No prepared commands. Run prep first.', 'Slice');
+      return;
+    }
+    sliceRunning = true;
+    setSliceStartLoading(true);
+    appendSliceTerminal('');
+    appendSliceTerminal(`[katana] starting slice execution (${preparedSliceCommands.length} command(s))`);
+    if (preparedSliceProfile) {
+      appendSliceTerminal(`[katana] profile: --printer=${preparedSliceProfile}`);
+    }
+
+    let hadError = false;
+    for (let i = 0; i < preparedSliceCommands.length; i += 1) {
+      const cmd = preparedSliceCommands[i];
+      appendSliceTerminal('');
+      appendSliceTerminal(`[katana] running command ${i + 1}/${preparedSliceCommands.length} (plate ${cmd.plate_index + 1})`);
+      try {
+        await streamPrint3rCommand(cmd);
+      } catch (err) {
+        hadError = true;
+        appendSliceTerminal(`[error] ${err.message}`);
+        break;
+      }
+    }
+
+    appendSliceTerminal('');
+    appendSliceTerminal(hadError ? '[katana] slice run finished with errors.' : '[katana] slice run complete.');
+    const status = document.getElementById('slicer-status');
+    if (status) status.textContent = hadError ? 'Slice failed' : 'Slice complete';
+    if (!hadError) {
+      const files = derivePreviewFilesFromCommands(preparedSliceCommands);
+      populatePreviewFiles(files);
+      if (files.length > 0) {
+        setPreviewAccess(true);
+        const select = document.getElementById('preview-gcode-select');
+        if (select) {
+          select.value = files[0];
+        }
+        try {
+          await loadPreviewMetadata(files[0]);
+        } catch (err) {
+          appendSliceTerminal(`[warn] preview metadata load failed: ${err.message}`);
+        }
+      }
+    }
+    sliceRunning = false;
+    setSliceStartEnabled(!hadError && preparedSliceCommands.length > 0);
+  }
+
+  async function openSettingsPlaceholder() {
     const modal = document.getElementById('settings-placeholder-modal');
+    try {
+      const settings = await loadPrint3rSettingsForCurrentProject();
+      applyPrint3rSettingsToForm(settings);
+    } catch (err) {
+      showMessageModal(`Could not load settings: ${err.message}`, 'Settings');
+    }
+    setSettingsMode(settingsMode);
+    syncFillDensitySlider();
+    const fillDensityInput = document.getElementById('p3r-fill-density');
+    const fillDensitySlider = document.getElementById('p3r-fill-density-slider');
+    if (fillDensityInput && fillDensitySlider) {
+      fillDensitySlider.oninput = () => {
+        fillDensityInput.value = fillDensitySlider.value;
+      };
+      fillDensityInput.oninput = () => {
+        syncFillDensitySlider();
+      };
+    }
     if (modal) modal.classList.add('is-active');
+  }
+
+  function saveSettingsPlaceholder() {
+    const settings = collectPrint3rSettingsFromForm();
+    localStorage.setItem(getPrint3rSettingsKey(), JSON.stringify(settings));
+    closeSettingsPlaceholder();
   }
 
   function closeSettingsPlaceholder() {
