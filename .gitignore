@@ -10,3 +10,4 @@ config.json
 *.stl
 projects
 /static/uploads
+/static/thumbnails
