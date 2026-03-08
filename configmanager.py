@@ -5,6 +5,7 @@ import json
 import threading
 import base64
 import binascii
+import time
 from datetime import datetime
 from validators import validate_file_path, validate_printer_profiles_file
 
@@ -258,6 +259,17 @@ class ConfigManager:
     def cleanup_orphan_uploads(self):
         try:
             referenced = set()
+
+            def _collect_referenced_models(models):
+                if not isinstance(models, list):
+                    return
+                for model in models:
+                    if not isinstance(model, dict):
+                        continue
+                    model_url = model.get("url", "")
+                    if isinstance(model_url, str) and model_url.startswith("/static/uploads/"):
+                        referenced.add(model_url.rsplit("/", 1)[-1])
+
             if os.path.exists(self.projects_dir):
                 for filename in os.listdir(self.projects_dir):
                     if not filename.endswith(".json"):
@@ -266,19 +278,17 @@ class ConfigManager:
                     try:
                         with open(project_path, "r") as f:
                             project_data = json.load(f)
-                        models = project_data.get("models", [])
-                        if not isinstance(models, list):
-                            continue
-                        for model in models:
-                            if not isinstance(model, dict):
-                                continue
-                            model_url = model.get("url", "")
-                            if isinstance(model_url, str) and model_url.startswith("/static/uploads/"):
-                                referenced.add(model_url.rsplit("/", 1)[-1])
+                        # Current schema
+                        _collect_referenced_models(project_data.get("models", []))
+                        # Backward-compatible schema variants
+                        if isinstance(project_data.get("data"), dict):
+                            _collect_referenced_models(project_data["data"].get("models", []))
                     except Exception:
                         continue
 
             removed = 0
+            now = time.time()
+            max_age_seconds = 7 * 24 * 60 * 60  # keep unreferenced uploads for 7 days
             for entry in os.scandir(self.uploads_dir):
                 if not entry.is_file():
                     continue
@@ -286,6 +296,9 @@ class ConfigManager:
                     continue
                 if entry.name not in referenced:
                     try:
+                        age_seconds = now - entry.stat().st_mtime
+                        if age_seconds < max_age_seconds:
+                            continue
                         os.remove(entry.path)
                         removed += 1
                     except OSError:

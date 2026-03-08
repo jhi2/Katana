@@ -244,6 +244,10 @@
         </div>
 
         <div class="buttons">
+          <button class="button is-primary is-small is-fullwidth" onclick="runSlice()"><span
+              class="icon is-small"><i class="fas fa-layer-group"></i></span><span>Slice</span></button>
+          <button class="button is-warning is-small is-fullwidth" onclick="openSettingsPlaceholder()"><span
+              class="icon is-small"><i class="fas fa-cog"></i></span><span>Open Settings</span></button>
           <button class="button is-info is-small is-fullwidth" onclick="saveActiveProject()"><span
               class="icon is-small"><i class="fas fa-save"></i></span><span>Save Project</span></button>
           <button class="button is-danger is-outlined is-small is-fullwidth" onclick="clearPlate()"><span
@@ -304,6 +308,20 @@
     <footer class="modal-card-foot">
       <button class="button is-primary" onclick="submitCreateProjectModal()">Create Project</button>
       <button class="button" onclick="closeCreateProjectModal()">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<div id="settings-placeholder-modal" class="modal">
+  <div class="modal-background" onclick="closeSettingsPlaceholder()"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Settings</p>
+      <button class="delete" aria-label="close" onclick="closeSettingsPlaceholder()"></button>
+    </header>
+    <section class="modal-card-body"></section>
+    <footer class="modal-card-foot">
+      <button class="button" onclick="closeSettingsPlaceholder()">Close</button>
     </footer>
   </div>
 </div>
@@ -722,6 +740,20 @@
     if (!slicer) return;
     slicer.removeSelectedModel();
     queueAutosave();
+  }
+
+  function runSlice() {
+    alert("no slicer yet");
+  }
+
+  function openSettingsPlaceholder() {
+    const modal = document.getElementById('settings-placeholder-modal');
+    if (modal) modal.classList.add('is-active');
+  }
+
+  function closeSettingsPlaceholder() {
+    const modal = document.getElementById('settings-placeholder-modal');
+    if (modal) modal.classList.remove('is-active');
   }
 </script>
 {% endblock %}

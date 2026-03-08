@@ -10,9 +10,6 @@ import uuid
 from werkzeug.utils import secure_filename
 app = Flask(__name__)
 config = ConfigManager()
-removed_uploads = config.cleanup_orphan_uploads()
-if removed_uploads > 0:
-    print(f"Startup cleanup: removed {removed_uploads} orphan STL upload(s)")
 with open("teapot.cfg", "r") as f:
     t = f.read().strip() == "True"
 @app.route('/')
