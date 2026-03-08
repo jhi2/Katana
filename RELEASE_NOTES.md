@@ -1,5 +1,21 @@
 # Katana Release Notes
 
+## Version 2.0.1
+
+### 🐛 Bug Fixes
+- **Project Rename Without Duplicates**: Renaming a project now updates the existing project record instead of creating duplicate project files.
+- **Safer Rename Handling**: Added collision checks when renaming to an existing project name.
+
+### 🚀 Improvements
+- **Autosave System**: Added debounced + periodic autosave for slicer state changes, project name edits, model upload/load, and plate/model operations.
+- **Create Project Modal**: Replaced browser `prompt()` with a native Bulma modal for cleaner project creation UX.
+- **Bulma Layout Refactor**: Reduced inline styling and moved more UI structure to stock Bulma classes while preserving the existing visual design.
+
+### 🔧 Reliability
+- **Project Save Semantics**: Save API now supports `previous_filename` for consistent save/rename behavior from frontend autosave and manual save flows.
+
+---
+
 ## Version 2.0.0
 
 ### 🚀 Major Features

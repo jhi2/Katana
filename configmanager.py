@@ -187,7 +187,7 @@ class ConfigManager:
             print(f"Error listing projects: {e}")
             return []
 
-    def save_project(self, name, project_data):
+    def save_project(self, name, project_data, previous_filename=None):
         try:
             if not name:
                 raise ValueError("Project name is required")
@@ -198,6 +198,15 @@ class ConfigManager:
                 raise ValueError("Project name contains no valid filename characters")
             filename = f"{safe_name}.json"
             filepath = self._resolve_project_path(filename)
+            previous_path = None
+            previous_base = None
+
+            if previous_filename:
+                previous_path = self._resolve_project_path(previous_filename)
+                previous_base = os.path.splitext(os.path.basename(previous_filename))[0]
+
+                if previous_filename != filename and os.path.exists(filepath):
+                    raise ValueError("A project with that name already exists")
 
             # Persist thumbnail image as a static file for reliable loading.
             thumb_safe_name = safe_name.replace(" ", "_")
@@ -210,6 +219,14 @@ class ConfigManager:
             
             with open(filepath, "w") as f:
                 json.dump(project_data, f, indent=4)
+
+            # If this was a rename, remove the old project file and stale thumbnail.
+            if previous_path and previous_filename != filename and os.path.exists(previous_path):
+                os.remove(previous_path)
+                if previous_base:
+                    old_thumb = self._thumbnail_abspath(previous_base.replace(" ", "_"))
+                    if os.path.exists(old_thumb):
+                        os.remove(old_thumb)
                 
             return True, filename
         except Exception as e:

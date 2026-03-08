@@ -171,11 +171,12 @@ def save_project():
         data = request.get_json()
         name = data.get('name', '').strip()
         project_data = data.get('data')
+        previous_filename = data.get('previous_filename')
         
         if not name or not project_data:
             return jsonify({"success": False, "error": "Name and data are required"})
             
-        success, result = config.save_project(name, project_data)
+        success, result = config.save_project(name, project_data, previous_filename=previous_filename)
         if success:
             return jsonify({"success": True, "filename": result})
         else:

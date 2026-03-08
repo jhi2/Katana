@@ -45,6 +45,26 @@ class ConfigManagerTests(unittest.TestCase):
 
         self.assertTrue(self.cm.delete_project(filename))
 
+    def test_rename_project_removes_old_file(self):
+        success, filename = self.cm.save_project("BeforeRename", {"hello": "world"})
+        self.assertTrue(success)
+        self.assertEqual(filename, "BeforeRename.json")
+
+        success, new_filename = self.cm.save_project(
+            "AfterRename",
+            {"hello": "renamed"},
+            previous_filename=filename
+        )
+        self.assertTrue(success)
+        self.assertEqual(new_filename, "AfterRename.json")
+
+        old_path = self.cm._resolve_project_path("BeforeRename.json")
+        new_path = self.cm._resolve_project_path("AfterRename.json")
+        self.assertFalse(os.path.exists(old_path))
+        self.assertTrue(os.path.exists(new_path))
+
+        self.assertTrue(self.cm.delete_project(new_filename))
+
 
 if __name__ == "__main__":
     unittest.main()

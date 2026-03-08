@@ -285,6 +285,29 @@
   <div id="documents-content" class="tab-content"></div>
 </div>
 
+<div id="new-project-modal" class="modal">
+  <div class="modal-background" onclick="closeCreateProjectModal()"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Create New Project</p>
+      <button class="delete" aria-label="close" onclick="closeCreateProjectModal()"></button>
+    </header>
+    <section class="modal-card-body">
+      <div class="field">
+        <label class="label">Project Name</label>
+        <div class="control">
+          <input id="new-project-name-input" class="input" type="text" maxlength="120" placeholder="Untitled Project">
+        </div>
+      </div>
+      <p class="help">Choose a project name to unlock the Slice workspace.</p>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-primary" onclick="submitCreateProjectModal()">Create Project</button>
+      <button class="button" onclick="closeCreateProjectModal()">Cancel</button>
+    </footer>
+  </div>
+</div>
+
 <script>
   let slicer = null;
   let slicerInitPromise = null;
@@ -293,6 +316,7 @@
   let autosaveTimer = null;
   let autosaveInFlight = false;
   let lastAutosaveAt = 0;
+  let createProjectModalResolve = null;
 
   function setSliceAccess(enabled) {
     const sliceTab = document.getElementById('printers-tab');
@@ -347,6 +371,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
+          previous_filename: localStorage.getItem('katana_last_project'),
           data: {
             models: slicer.exportState(),
             thumbnail: slicer.getScreenshot()
@@ -423,7 +448,55 @@
       if (Date.now() - lastAutosaveAt < 25000) return;
       performAutosave(true);
     }, 30000);
+
+    const modalInput = document.getElementById('new-project-name-input');
+    if (modalInput) {
+      modalInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          submitCreateProjectModal();
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeCreateProjectModal();
+        }
+      });
+    }
   });
+
+  function openCreateProjectModal(defaultName) {
+    const modal = document.getElementById('new-project-modal');
+    const input = document.getElementById('new-project-name-input');
+    if (!modal || !input) return Promise.resolve(null);
+
+    input.value = defaultName || '';
+    modal.classList.add('is-active');
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+
+    return new Promise((resolve) => {
+      createProjectModalResolve = resolve;
+    });
+  }
+
+  function closeCreateProjectModal(name = null) {
+    const modal = document.getElementById('new-project-modal');
+    if (modal) modal.classList.remove('is-active');
+    if (createProjectModalResolve) {
+      const resolve = createProjectModalResolve;
+      createProjectModalResolve = null;
+      resolve(name);
+    }
+  }
+
+  function submitCreateProjectModal() {
+    const input = document.getElementById('new-project-name-input');
+    const name = input ? input.value.trim() : '';
+    if (!name) return;
+    closeCreateProjectModal(name);
+  }
 
   async function ensureSlicer() {
     if (slicer) return slicer;
@@ -531,7 +604,7 @@
 
   async function createNewProject() {
     const defaultName = `Project ${new Date().toLocaleString()}`;
-    const name = prompt('Project name:', defaultName);
+    const name = await openCreateProjectModal(defaultName);
     if (!name || !name.trim()) return;
 
     try {
