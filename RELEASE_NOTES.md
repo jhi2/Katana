@@ -1,5 +1,27 @@
 # Katana Release Notes
 
+## Version 2.1.0
+
+### 🚀 New Features
+- **3MF Model Import (Models Only)**: Added `.3mf` upload support that extracts mesh geometry into loadable models while ignoring print profiles/settings/project metadata.
+- **Drag-and-Drop Upload in Slice Tab**: STL/3MF files can now be dropped directly into the workspace.
+- **Pinned Projects**: Added project pin/unpin controls in Home; pinned projects sort above unpinned.
+- **Demo Project Seeding**: Added tracked demo definition and startup seeding for "Demo Block".
+
+### 🎨 UI & UX
+- **Responsive Slice Layout**: Slice viewport now expands to fill available vertical space beneath tabs.
+- **Improved Drop Overlay Layering**: File-drop overlay now appears above floating workspace controls.
+- **Geometry Warning Toast**: Added corner warning notification for placement issues (collision/off-plate).
+- **Modal-First Project Creation**: New project flow uses Bulma modal instead of browser prompt.
+
+### 🔧 Behavior Fixes
+- **Multi-Plate Persistence**: Project save/load now preserves plate count and active plate index.
+- **Rename Without Duplication**: Project rename updates in place using `previous_filename` semantics.
+- **Removed Orphan Upload Cleanup**: Automatic startup deletion of uploads has been removed.
+- **Splash Handoff Smoothing**: Splash duration includes a handoff buffer to hide blank transition.
+
+---
+
 ## Version 2.0.1
 
 ### 🐛 Bug Fixes

@@ -10,20 +10,90 @@ export default class SlicerUI {
             plateSize: config.plateSize || 220,
             buildHeight: config.buildHeight || 250,
             padding: config.padding || 50,
-            colors: { normal: 0x3498db, error: 0xef4444, selected: 0x22c55e }
+            colors: { normal: 0xfacc15, overhang: 0xef4444 },
+            overhangAngle: config.overhangAngle || 50
         };
 
         this.models = new Map();
         this.plates = [];
+        this.plateGroups = [];
         this.activePlateIndex = 0;
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         this.onStateChange = null;
+        this.onValidationChange = null;
         this._stateChangeTimer = null;
+        this._lastValidationState = "";
 
         this._init();
         this.addPlate(); // Create initial plate
         this._animate();
+    }
+
+    _applyOverhangColors(geometry) {
+        let geo = geometry;
+        if (geo.index) {
+            geo = geo.toNonIndexed();
+        }
+
+        geo.computeVertexNormals();
+
+        const positions = geo.attributes.position.array;
+        const triCount = positions.length / 9;
+        const colors = new Float32Array((positions.length / 3) * 3);
+
+        const normalColor = new THREE.Color(this.config.colors.normal);
+        const overhangColor = new THREE.Color(this.config.colors.overhang);
+        const thresholdDot = -Math.sin((this.config.overhangAngle * Math.PI) / 180);
+
+        const a = new THREE.Vector3();
+        const b = new THREE.Vector3();
+        const c = new THREE.Vector3();
+        const ab = new THREE.Vector3();
+        const ac = new THREE.Vector3();
+        const faceNormal = new THREE.Vector3();
+
+        for (let i = 0; i < triCount; i += 1) {
+            const p = i * 9;
+            a.set(positions[p], positions[p + 1], positions[p + 2]);
+            b.set(positions[p + 3], positions[p + 4], positions[p + 5]);
+            c.set(positions[p + 6], positions[p + 7], positions[p + 8]);
+
+            ab.subVectors(b, a);
+            ac.subVectors(c, a);
+            faceNormal.crossVectors(ab, ac).normalize();
+
+            const isOverhang = faceNormal.y < thresholdDot;
+            const color = isOverhang ? overhangColor : normalColor;
+
+            const base = i * 9;
+            for (let j = 0; j < 3; j += 1) {
+                const ci = base + (j * 3);
+                colors[ci] = color.r;
+                colors[ci + 1] = color.g;
+                colors[ci + 2] = color.b;
+            }
+        }
+
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        return geo;
+    }
+
+    _createPrintableMesh(geometry, name, url = "") {
+        const colorizedGeometry = this._applyOverhangColors(geometry);
+        const mesh = new THREE.Mesh(
+            colorizedGeometry,
+            new THREE.MeshStandardMaterial({ vertexColors: true })
+        );
+        mesh.uuid = THREE.MathUtils.generateUUID();
+        mesh.name = name;
+        mesh.userData.url = url;
+
+        colorizedGeometry.computeBoundingBox();
+        const center = new THREE.Vector3();
+        colorizedGeometry.boundingBox.getCenter(center);
+        colorizedGeometry.translate(-center.x, -colorizedGeometry.boundingBox.min.y, -center.z);
+        return mesh;
     }
 
     _init() {
@@ -77,6 +147,7 @@ export default class SlicerUI {
         group.add(cage);
         group.position.x = xOffset;
         this.scene.add(group);
+        this.plateGroups.push(group);
 
         const plate = {
             id: `plate_${index}`,
@@ -89,6 +160,19 @@ export default class SlicerUI {
         this.plates.push(plate);
         this._notifyStateChanged();
         return index;
+    }
+
+    resetPlates(count = 1) {
+        this.plateGroups.forEach(group => this.scene.remove(group));
+        this.plateGroups = [];
+        this.plates = [];
+        this.activePlateIndex = 0;
+
+        const plateCount = Math.max(1, Number.isInteger(count) ? count : 1);
+        for (let i = 0; i < plateCount; i += 1) {
+            this.addPlate();
+        }
+        this.focusPlate(0);
     }
 
     focusPlate(index) {
@@ -142,14 +226,24 @@ export default class SlicerUI {
                 scale: { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z }
             });
         });
-        return state;
+        return {
+            models: state,
+            plateCount: this.plates.length,
+            activePlateIndex: this.activePlateIndex
+        };
     }
 
-    async importState(modelsData) {
+    async importState(projectState) {
+        const legacyModels = Array.isArray(projectState) ? projectState : null;
+        const modelsData = legacyModels || (projectState && Array.isArray(projectState.models) ? projectState.models : []);
+        const plateCount = legacyModels ? 1 : Math.max(1, parseInt(projectState?.plateCount || 1, 10));
+        const activePlateIndex = legacyModels ? 0 : Math.max(0, parseInt(projectState?.activePlateIndex || 0, 10));
+
         // Clear existing
         this.models.forEach(m => this.scene.remove(m));
         this.models.clear();
         if (this.transform) this.transform.detach();
+        this.resetPlates(plateCount);
 
         const loader = new STLLoader();
         for (const m of modelsData) {
@@ -160,15 +254,7 @@ export default class SlicerUI {
                     loader.load(m.url, resolve, undefined, reject);
                 });
 
-                const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: this.config.colors.normal }));
-                mesh.uuid = THREE.MathUtils.generateUUID();
-                mesh.name = m.name;
-                mesh.userData.url = m.url;
-
-                geometry.computeBoundingBox();
-                const center = new THREE.Vector3();
-                geometry.boundingBox.getCenter(center);
-                geometry.translate(-center.x, -geometry.boundingBox.min.y, -center.z);
+                const mesh = this._createPrintableMesh(geometry, m.name, m.url);
 
                 mesh.position.set(m.position.x, m.position.y, m.position.z);
                 mesh.rotation.set(m.rotation.x, m.rotation.y, m.rotation.z);
@@ -181,6 +267,8 @@ export default class SlicerUI {
             }
         }
         this.validate();
+        this.focusPlate(Math.min(activePlateIndex, this.plates.length - 1));
+        this._notifyStateChanged();
     }
 
     // --- REMOTE LOADING ---
@@ -194,16 +282,7 @@ export default class SlicerUI {
         const loader = new STLLoader();
 
         loader.load(url, (geometry) => {
-            const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: this.config.colors.normal }));
-            mesh.uuid = THREE.MathUtils.generateUUID();
-            mesh.name = name;
-            mesh.userData.url = url;
-
-            // Auto-center and ground geometry
-            geometry.computeBoundingBox();
-            const center = new THREE.Vector3();
-            geometry.boundingBox.getCenter(center);
-            geometry.translate(-center.x, -geometry.boundingBox.min.y, -center.z);
+            const mesh = this._createPrintableMesh(geometry, name, url);
 
             // Place on currently focused plate
             mesh.position.set(this.plates[this.activePlateIndex].xOffset, 0, 0);
@@ -236,14 +315,31 @@ export default class SlicerUI {
 
     validate() {
         const modelList = Array.from(this.models.values());
+        const offPlate = new Set();
+        const colliding = new Set();
         modelList.forEach(m => {
             const box = new THREE.Box3().setFromObject(m);
             const isOnPlate = this.plates.some(p => p.bounds.containsBox(box));
             const isColliding = modelList.some(other => (other.uuid !== m.uuid && box.intersectsBox(new THREE.Box3().setFromObject(other))));
 
-            const isSelected = this.transform.object === m;
-            m.material.color.setHex((!isOnPlate || isColliding) ? this.config.colors.error : (isSelected ? this.config.colors.selected : this.config.colors.normal));
+            if (!isOnPlate) offPlate.add(m.name || "Model");
+            if (isColliding) colliding.add(m.name || "Model");
         });
+
+        if (typeof this.onValidationChange === 'function') {
+            const stateKey = JSON.stringify({
+                offPlate: Array.from(offPlate).sort(),
+                colliding: Array.from(colliding).sort()
+            });
+            if (stateKey !== this._lastValidationState) {
+                this._lastValidationState = stateKey;
+                this.onValidationChange({
+                    hasIssues: offPlate.size > 0 || colliding.size > 0,
+                    offPlate: Array.from(offPlate),
+                    colliding: Array.from(colliding)
+                });
+            }
+        }
     }
 
     getScreenshot() {

@@ -57,7 +57,7 @@
   }
 
   .katana-page {
-    padding-top: 2rem;
+    padding-top: 0;
   }
 
   .slicer-tab {
@@ -67,8 +67,8 @@
   .slicer-pane {
     position: relative;
     width: 100%;
-    height: calc(100vh - 250px);
-    min-height: 600px;
+    height: calc(100dvh - 220px);
+    min-height: 360px;
     background: #000;
     border-radius: 12px;
     overflow: hidden;
@@ -175,6 +175,58 @@
   .project-thumb-placeholder {
     height: 100%;
   }
+
+  .dropzone-active {
+    border-color: #00d1b2 !important;
+    box-shadow: inset 0 0 0 2px rgba(0, 209, 178, 0.35), inset 0 0 60px rgba(0, 209, 178, 0.12);
+  }
+
+  .dropzone-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 260;
+    pointer-events: none;
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .dropzone-overlay.is-active {
+    display: flex;
+  }
+
+  .geometry-warning {
+    position: absolute;
+    top: 16px;
+    right: 80px;
+    z-index: 270;
+    max-width: 320px;
+    padding: 0.5rem 0.75rem;
+    display: none;
+  }
+
+  .geometry-warning.is-active {
+    display: block;
+  }
+
+  #settings-placeholder-modal {
+    z-index: 300;
+  }
+
+  @media screen and (max-width: 1023px) {
+    .workspace-sidebar {
+      position: static;
+      width: auto;
+      max-height: none;
+      margin: 0.75rem;
+    }
+
+    .floating-tools {
+      top: 12px;
+      right: 12px;
+    }
+  }
 </style>
 
 <div class="tabs is-primary is-large">
@@ -215,6 +267,12 @@
   <div id="printers-content" class="tab-content slicer-tab">
     <div id="slicer-viewport" class="slicer-pane">
       <div id="slicer-container" class="slicer-canvas"></div>
+      <div id="dropzone-overlay" class="dropzone-overlay">
+        <div class="notification is-primary is-light has-text-centered">
+          <strong>Drop STL or 3MF Files to Upload</strong>
+        </div>
+      </div>
+      <div id="geometry-warning" class="notification is-warning is-light geometry-warning"></div>
       <div class="floating-tools">
         <button id="tool-move" class="button is-dark is-small is-active" title="Move"
           onclick="setTransformMode('translate')">
@@ -255,13 +313,13 @@
         </div>
 
         <div class="field mt-3">
-          <label class="label is-small has-text-grey-light">Upload STL</label>
+          <label class="label is-small has-text-grey-light">Upload Model</label>
           <div class="file is-primary is-small is-fullwidth has-name">
             <label class="file-label">
-              <input id="model-upload" class="file-input" type="file" name="model" accept=".stl">
+              <input id="model-upload" class="file-input" type="file" name="model" accept=".stl,.3mf">
               <span class="file-cta">
                 <span class="file-icon"><i class="fas fa-upload"></i></span>
-                <span class="file-label">Choose STL...</span>
+                <span class="file-label">Choose STL/3MF...</span>
               </span>
               <span id="model-upload-name" class="file-name">No file selected</span>
             </label>
@@ -335,6 +393,37 @@
   let autosaveInFlight = false;
   let lastAutosaveAt = 0;
   let createProjectModalResolve = null;
+  let dragDepth = 0;
+
+  function getPinnedProjects() {
+    try {
+      const raw = localStorage.getItem('katana_pinned_projects');
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function setPinnedProjects(pinned) {
+    localStorage.setItem('katana_pinned_projects', JSON.stringify(pinned));
+  }
+
+  function isPinnedProject(filename) {
+    return getPinnedProjects().includes(filename);
+  }
+
+  function toggleProjectPin(filename) {
+    const pinned = getPinnedProjects();
+    const idx = pinned.indexOf(filename);
+    if (idx >= 0) {
+      pinned.splice(idx, 1);
+    } else {
+      pinned.push(filename);
+    }
+    setPinnedProjects(pinned);
+    loadProjectList();
+  }
 
   function setSliceAccess(enabled) {
     const sliceTab = document.getElementById('printers-tab');
@@ -359,6 +448,8 @@
 
     if (tabName === 'printers') {
       ensureSlicer().then(() => {
+        resizeSlicerViewport();
+        setTimeout(resizeSlicerViewport, 60);
         if (slicer) {
           slicer.onResize();
           requestAnimationFrame(() => slicer.onResize());
@@ -480,7 +571,81 @@
         }
       });
     }
+    initDragDropUpload();
+    window.addEventListener('resize', () => {
+      resizeSlicerViewport();
+      if (slicer) slicer.onResize();
+    });
+    resizeSlicerViewport();
   });
+
+  function resizeSlicerViewport() {
+    const pane = document.getElementById('slicer-viewport');
+    if (!pane) return;
+    const rect = pane.getBoundingClientRect();
+    const minHeight = 320;
+    const nextHeight = Math.max(minHeight, Math.ceil(window.innerHeight - rect.top));
+    pane.style.height = `${nextHeight}px`;
+  }
+
+  function setDropzoneActive(active) {
+    const pane = document.getElementById('slicer-viewport');
+    const overlay = document.getElementById('dropzone-overlay');
+    if (pane) pane.classList.toggle('dropzone-active', active);
+    if (overlay) overlay.classList.toggle('is-active', active);
+  }
+
+  async function handleDroppedFiles(fileList) {
+    if (!fileList || fileList.length === 0) return;
+    await ensureSlicer();
+    const files = Array.from(fileList);
+    for (const file of files) {
+      const name = file.name.toLowerCase();
+      if (!(name.endsWith('.stl') || name.endsWith('.3mf'))) {
+        continue;
+      }
+      await uploadModelFile(file);
+    }
+  }
+
+  function initDragDropUpload() {
+    const pane = document.getElementById('slicer-viewport');
+    if (!pane) return;
+
+    pane.addEventListener('dragenter', (event) => {
+      event.preventDefault();
+      if (!projectReady) return;
+      dragDepth += 1;
+      setDropzoneActive(true);
+    });
+
+    pane.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      if (!projectReady) return;
+      event.dataTransfer.dropEffect = 'copy';
+      setDropzoneActive(true);
+    });
+
+    pane.addEventListener('dragleave', (event) => {
+      event.preventDefault();
+      if (!projectReady) return;
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) {
+        setDropzoneActive(false);
+      }
+    });
+
+    pane.addEventListener('drop', async (event) => {
+      event.preventDefault();
+      dragDepth = 0;
+      setDropzoneActive(false);
+      if (!projectReady) {
+        alert('Create or open a project first.');
+        return;
+      }
+      await handleDroppedFiles(event.dataTransfer.files);
+    });
+  }
 
   function openCreateProjectModal(defaultName) {
     const modal = document.getElementById('new-project-modal');
@@ -539,6 +704,8 @@
         plateSize: Math.max(bed[0], bed[1]),
         buildHeight: bed[2] || 250
       });
+      slicer.onValidationChange = (issues) => updateGeometryWarning(issues);
+      resizeSlicerViewport();
       slicer.onStateChange = () => queueAutosave();
       slicer.onResize();
       requestAnimationFrame(() => slicer && slicer.onResize());
@@ -565,22 +732,32 @@
     try {
       const response = await fetch('/api/projects');
       const projects = await response.json();
+      const pinned = new Set(getPinnedProjects());
+      const sortedProjects = [...projects].sort((a, b) => {
+        const aPinned = pinned.has(a.filename) ? 1 : 0;
+        const bPinned = pinned.has(b.filename) ? 1 : 0;
+        if (aPinned !== bPinned) return bPinned - aPinned;
+        const aDate = new Date(a.modified).getTime() || 0;
+        const bDate = new Date(b.modified).getTime() || 0;
+        return bDate - aDate;
+      });
 
-      if (projects.length === 0) {
+      if (sortedProjects.length === 0) {
         listDiv.innerHTML = '<div class="column is-12 has-text-centered py-6"><p class="has-text-grey">No projects found.</p></div>';
         return;
       }
 
-      listDiv.innerHTML = projects.map(p => `
+      listDiv.innerHTML = sortedProjects.map(p => `
         <div class="column is-4">
           <div class="box has-background-grey-darker p-0 project-card">
             <div class="project-thumb" style="background-image: url('${p.thumbnail || ''}')">
               ${!p.thumbnail ? '<div class="has-text-grey-darker is-flex is-align-items-center is-justify-content-center project-thumb-placeholder"><i class="fas fa-cube fa-3x"></i></div>' : ''}
             </div>
             <div class="project-card-body">
-              <h3 class="title is-5 has-text-white mb-1" title="${p.name}">${p.name}</h3>
+              <h3 class="title is-5 has-text-white mb-1" title="${p.name}">${p.name}${isPinnedProject(p.filename) ? ' <span class="icon has-text-warning is-small"><i class="fas fa-thumbtack"></i></span>' : ''}</h3>
               <p class="is-size-7 has-text-grey-light mb-4"><i class="far fa-clock mr-1"></i>${p.modified}</p>
               <div class="buttons">
+                <button class="button is-small ${isPinnedProject(p.filename) ? 'is-warning' : 'is-dark'}" onclick="toggleProjectPin('${p.filename}')"><span class="icon is-small"><i class="fas fa-thumbtack"></i></span></button>
                 <button class="button is-small is-primary is-light" onclick="openProject('${p.filename}')"><span class="icon is-small"><i class="fas fa-folder-open"></i></span><span>Open</span></button>
                 <button class="button is-small is-danger is-outlined" onclick="deleteProject('${p.filename}')"><span class="icon is-small"><i class="fas fa-trash"></i></span></button>
               </div>
@@ -690,8 +867,20 @@
       if (!result.success) {
         throw new Error(result.error || 'Upload failed');
       }
-      slicer.loadFromUrl(result.url, file.name);
-      if (status) status.textContent = `Loaded ${file.name}`;
+      const models = Array.isArray(result.models) && result.models.length > 0
+        ? result.models
+        : (result.url ? [{ url: result.url, filename: file.name }] : []);
+      if (models.length === 0) {
+        throw new Error('No models found in uploaded file');
+      }
+      for (const model of models) {
+        slicer.loadFromUrl(model.url, model.filename || file.name);
+      }
+      if (status) {
+        status.textContent = models.length === 1
+          ? `Loaded ${models[0].filename || file.name}`
+          : `Loaded ${models.length} models from ${file.name}`;
+      }
     } catch (err) {
       if (status) status.textContent = 'Upload failed';
       alert(`Upload failed: ${err.message}`);
@@ -740,6 +929,26 @@
     if (!slicer) return;
     slicer.removeSelectedModel();
     queueAutosave();
+  }
+
+  function updateGeometryWarning(issues) {
+    const warning = document.getElementById('geometry-warning');
+    if (!warning) return;
+    if (!issues || !issues.hasIssues) {
+      warning.classList.remove('is-active');
+      warning.textContent = '';
+      return;
+    }
+
+    const parts = [];
+    if (issues.offPlate && issues.offPlate.length > 0) {
+      parts.push(`Off plate: ${issues.offPlate.slice(0, 3).join(', ')}${issues.offPlate.length > 3 ? '…' : ''}`);
+    }
+    if (issues.colliding && issues.colliding.length > 0) {
+      parts.push(`Collision: ${issues.colliding.slice(0, 3).join(', ')}${issues.colliding.length > 3 ? '…' : ''}`);
+    }
+    warning.textContent = parts.join(' | ');
+    warning.classList.add('is-active');
   }
 
   function runSlice() {

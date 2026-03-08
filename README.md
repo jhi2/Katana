@@ -8,12 +8,18 @@ For version history and changes, see [RELEASE_NOTES.md](./RELEASE_NOTES.md).
 
 - Project-based workflow (create/open/save/delete projects)
 - 3D workspace powered by Three.js
-- STL upload to local server storage
+- STL + 3MF upload to local server storage
+- Drag-and-drop model upload in Slice tab
 - Multi-plate workspace controls
+- Multi-plate save/load persistence
 - Transform tools (move/rotate/scale/delete selected)
+- Overhang preview coloring (red) on model surfaces
+- Placement warning notification for collision/off-plate
 - Autosave for project state
 - Persistent project thumbnails
+- Pin/unpin projects in Home view
 - Printer profile setup + config import flow
+- Built-in seeded demo project (`Demo Block`)
 
 ## Current State
 
@@ -49,7 +55,7 @@ python main.py --no-gui
 1. Open Katana.
 2. Create a project (Home tab -> New Project modal) or open an existing one.
 3. Go to Slice tab.
-4. Upload STL(s) from the workspace panel.
+4. Upload STL/3MF from the workspace panel, or drag files into the Slice viewport.
 5. Arrange models and save (autosave also runs in background).
 
 ## Project Layout
@@ -69,8 +75,9 @@ python main.py --no-gui
 - `POST /api/projects` save project
 - `GET /api/projects/<filename>` load project
 - `DELETE /api/projects/<filename>` delete project
-- `POST /api/upload_model` upload STL
+- `POST /api/upload_model` upload STL/3MF (3MF extracts mesh models only)
 - `GET /api/config` read current config
+- `GET /demo/block.stl` demo model file route
 
 ## Development
 

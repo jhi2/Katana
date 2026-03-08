@@ -78,7 +78,7 @@ def show_splash():
         canvas.create_image(0, 0, image=bg_image, anchor="nw")
         
         # Draw text over the image
-        canvas.create_text(width // 2, height // 2, text=f"Katana:\n Print Awesome.\n Version {v}\n Powered by CuraEngine", font=("Helvetica", 36, "bold"), fill="white", justify="center")
+        canvas.create_text(width // 2, height // 2, text=f"Katana:\n Print Awesome.\n Version {v}\n Powered by Slice3r", font=("Helvetica", 36, "bold"), fill="white", justify="center")
         
         # Store reference
         splash_root.bg_image = bg_image
@@ -89,10 +89,12 @@ def show_splash():
         x = screen_x + (screen_width // 2) - (width // 2)
         y = screen_y + (screen_height // 2) - (height // 2)
         splash_root.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
-        label = tk.Label(splash_root, text=f"Katana...\n Print Awesome...\n Version {v}\n Powered by CuraEngine", font=("Helvetica", 24))
+        label = tk.Label(splash_root, text=f"Katana...\n Print Awesome...\n Version {v}\n Powered by Slice3r", font=("Helvetica", 24))
         label.pack(expand=True)
     
-    splash_root.after(sl, splash_root.destroy)
+    # Keep splash visible a bit longer to mask webview handoff blank time.
+    handoff_buffer_ms = 1800
+    splash_root.after(sl + handoff_buffer_ms, splash_root.destroy)
     splash_root.mainloop()
     print("INFO: Splash screen closed")
 
