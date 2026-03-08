@@ -12,7 +12,7 @@ with open("teapot.cfg", "r") as f:
 @app.route('/')
 def load():
     if t:
-        return abort(418)
+        return abort(418) # See RFC 2324
     if config.check_config("config.json"):
         config.load_config("config.json")
         return render_template('index.html', version=v, page_title="Katana", project_name="Untitled")
