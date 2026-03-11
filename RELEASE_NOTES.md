@@ -5,7 +5,7 @@
 ### 🚀 Major Features
 - **Native G-Code Preview Engine**: Replaced external unpkg dependencies with a custom-built, ultra-fast G-Code parser and native Three.js 3D visualizer.
 - **Offline Compatibility**: All preview features now run completely offline utilizing the internally bundled Three.js library.
-- **IceSL-style UI Redesign**: The preview tab features a sleek new aesthetic with frosted-glass HUD overlays, an integrated metadata bar, and a native vertical scrub slider for real-time layer inspection.
+- **UI Redesign**: The preview tab features a sleek new aesthetic with frosted-glass HUD overlays, an integrated metadata bar, and a native vertical scrub slider for real-time layer inspection.
 - **Hardware-Accelerated Scrubbing**: Scrubbing through layers now leverages batched WebGL buffers for instantaneous, 60 FPS performance even on massive files.
 
 ---
