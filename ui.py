@@ -700,6 +700,20 @@ def stream_run_print3r_command():
         return jsonify({"success": False, "error": "Failed to run Print3r command"}), 500
 
 
+@app.route('/api/print3r/gcode/<filename>', methods=['GET'])
+def get_gcode_file(filename):
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        gcode_dir = os.path.join(base_dir, "gcode")
+        safe_filename = secure_filename(filename)
+        if safe_filename != filename or not safe_filename.endswith(".gcode"):
+            return jsonify({"success": False, "error": "Invalid filename"}), 400
+        
+        return send_from_directory(gcode_dir, safe_filename)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route('/api/gcode/preview/<filename>', methods=['GET'])
 def gcode_preview(filename):
     try:
@@ -762,10 +776,48 @@ def gcode_preview(filename):
                 "max_z": round(max_z, 3),
                 "max_extrusion": round(extrusion, 3)
             },
-            "preview_lines": preview_lines
-        })
+        "preview_lines": preview_lines
+    })
     except Exception:
         return jsonify({"success": False, "error": "Failed to read G-code preview"}), 500
+
+
+@app.route('/api/gcode/upload', methods=['POST'])
+def upload_gcode():
+    try:
+        if not request.is_json:
+            return jsonify({"success": False, "error": "JSON body required"}), 400
+        data = request.get_json()
+        filename = data.get("filename", "")
+        if not filename:
+            return jsonify({"success": False, "error": "filename required"}), 400
+        safe_name = secure_filename(filename)
+        if safe_name != filename or not safe_name.endswith(".gcode"):
+            return jsonify({"success": False, "error": "Invalid filename"}), 400
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        gcode_dir = os.path.join(base_dir, "gcode")
+        path = os.path.join(gcode_dir, safe_name)
+        if not os.path.exists(path):
+            return jsonify({"success": False, "error": "G-code file not found"}), 404
+
+        config.load_config("config.json")
+        printer_url = config.get_ip_address()
+        if not printer_url or printer_url == "about:blank":
+            return jsonify({"success": False, "error": "No printer IP configured"}), 400
+
+        upload_url = printer_url.rstrip("/") + "/rr_upload"
+        with open(path, "rb") as f:
+            files = {"file": (safe_name, f, "application/octet-stream")}
+            try:
+                response = requests.post(upload_url, files=files, timeout=30)
+                response.raise_for_status()
+            except requests.RequestException as exc:
+                return jsonify({"success": False, "error": f"Upload failed: {exc}"}), 500
+
+        return jsonify({"success": True, "message": "Uploaded", "url": upload_url})
+    except Exception:
+        return jsonify({"success": False, "error": "Upload failed"}), 500
 
 
 @app.route('/api/projects', methods=['GET'])

@@ -2,8 +2,6 @@
 {% block content %}
 <style>
   body,
-  .title,
-  .subtitle,
   .button,
   .input,
   select,
@@ -11,6 +9,24 @@
   .label,
   .navbar-item {
     font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace !important;
+  }
+
+  .title,
+  .subtitle {
+    font-family: 'Outfit', 'Inter', sans-serif !important;
+  }
+
+  .button {
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+
+  .button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 209, 178, 0.2);
+  }
+
+  .button:active {
+    transform: translateY(1px);
   }
 
   /* Keep Font Awesome glyph font intact */
@@ -43,6 +59,20 @@
   .tab-content.is-active {
     display: block;
     animation: fadeIn 0.4s ease-out;
+  }
+
+  .preview-controls-overlay {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10;
+    pointer-events: auto;
+  }
+
+  .preview-controls-overlay .box {
+    background-color: rgba(30, 30, 30, 0.9) !important;
+    border: 1px solid #4a4a4a;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   }
 
   .tabs li.is-active a {
@@ -182,9 +212,23 @@
     height: 100%;
   }
 
+  @keyframes dropzonePulse {
+    0% {
+      box-shadow: inset 0 0 0 2px rgba(0, 209, 178, 0.35), inset 0 0 60px rgba(0, 209, 178, 0.12);
+    }
+
+    50% {
+      box-shadow: inset 0 0 0 2px rgba(0, 209, 178, 0.7), inset 0 0 90px rgba(0, 209, 178, 0.3);
+    }
+
+    100% {
+      box-shadow: inset 0 0 0 2px rgba(0, 209, 178, 0.35), inset 0 0 60px rgba(0, 209, 178, 0.12);
+    }
+  }
+
   .dropzone-active {
     border-color: #00d1b2 !important;
-    box-shadow: inset 0 0 0 2px rgba(0, 209, 178, 0.35), inset 0 0 60px rgba(0, 209, 178, 0.12);
+    animation: dropzonePulse 1.5s infinite;
   }
 
   .dropzone-overlay {
@@ -269,59 +313,179 @@
     background: rgba(0, 209, 178, 0.08);
   }
 
-  .preview-card {
-    background: rgba(20, 20, 20, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
-    padding: 1rem;
-  }
-
-  .preview-printer {
-    position: relative;
-    width: 100%;
-    max-width: 320px;
-    height: 360px;
-    margin: 0 auto;
-    border: 2px solid #2b2b2b;
-    border-radius: 8px;
-    background: linear-gradient(180deg, #161616 0%, #0d0d0d 100%);
-    overflow: hidden;
-  }
-
-  .preview-bed {
+  /* ---- Preview tab ---- */
+  .preview-empty-state {
     position: absolute;
-    left: 10%;
-    bottom: 10px;
-    width: 80%;
-    height: 16px;
-    background: #2f2f2f;
-    border-radius: 4px;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    pointer-events: none;
+    text-align: center;
+    gap: 0.75rem;
   }
 
-  .preview-print {
-    position: absolute;
-    left: 20%;
-    bottom: 26px;
-    width: 60%;
-    height: 0;
-    background: rgba(0, 209, 178, 0.45);
-    border: 1px solid rgba(0, 209, 178, 0.9);
-    border-bottom: 0;
-    border-radius: 4px 4px 0 0;
-    transition: height 0.2s ease;
+  .preview-empty-state.is-hidden {
+    display: none;
   }
 
-  .preview-nozzle {
+  .preview-empty-state .icon {
+    font-size: 3rem;
+    color: #555;
+  }
+
+  /* ── Preview Bottom HUD ── */
+  .preview-toolbar {
     position: absolute;
-    left: 50%;
-    width: 16px;
-    height: 16px;
-    margin-left: -8px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 18px;
+    background: rgba(10, 10, 10, 0.92);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(0, 209, 178, 0.15);
+    flex-wrap: wrap;
+  }
+
+  .preview-toolbar .meta-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .preview-toolbar .meta-item {
+    font-size: 0.72rem;
+    color: #999;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+  }
+
+  .preview-toolbar .meta-item strong {
+    color: #00d1b2;
+    margin-right: 3px;
+    font-weight: 600;
+  }
+
+  .preview-toolbar .actions-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  /* ── Vertical Layer Slider ── */
+  .vertical-slider-wrap {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 10px;
+    background: rgba(14, 14, 14, 0.88);
+    backdrop-filter: blur(14px);
+    border-radius: 14px;
+    border: 1px solid rgba(0, 209, 178, 0.12);
+    z-index: 10;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .vertical-slider-wrap .layer-label {
+    font-size: 0.65rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .vertical-slider-wrap .tag {
+    min-width: 36px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type="range"].vertical-range {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 22px;
+    height: 300px;
+    accent-color: #00d1b2;
+    cursor: pointer;
+    background: transparent;
+  }
+
+  /* ── Layer Counter HUD (top-left) ── */
+  .preview-layer-hud {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(14, 14, 14, 0.88);
+    backdrop-filter: blur(14px);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 209, 178, 0.12);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+    font-size: 0.78rem;
+    color: #ccc;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .preview-layer-hud .hud-icon {
+    color: #00d1b2;
+    font-size: 0.85rem;
+  }
+
+  .preview-layer-hud .hud-current {
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .preview-layer-hud .hud-sep {
+    color: #555;
+  }
+
+  /* ── Loading Spinner ── */
+  .preview-loading-spinner {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 8;
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .preview-loading-spinner.is-active {
+    display: flex;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .preview-loading-spinner .spinner-icon {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(0, 209, 178, 0.2);
+    border-top-color: #00d1b2;
     border-radius: 50%;
-    background: #f14668;
-    box-shadow: 0 0 10px rgba(241, 70, 104, 0.6);
-    transition: bottom 0.2s ease;
+    animation: spin 0.8s linear infinite;
   }
+
 
   .vertical-slider-wrap {
     display: flex;
@@ -331,8 +495,8 @@
   }
 
   .vertical-range {
-    -webkit-appearance: slider-vertical;
-    appearance: slider-vertical;
+    writing-mode: vertical-lr;
+    direction: rtl;
     width: 26px;
     height: 220px;
   }
@@ -359,7 +523,7 @@
     <li id="printers-tab" class="is-disabled"><a onclick="switchTab('printers')"><span class="icon is-small"><i
             class="fas fa-cube"></i></span><span>Slice</span></a></li>
     <li id="preview-tab" class="is-disabled"><a onclick="switchTab('preview')"><span class="icon is-small"><i
-            class="fas fa-print"></i></span><span>Preview</span></a></li>
+            class="fas fa-layer-group"></i></span><span>Preview</span></a></li>
     <li id="videos-tab"><a onclick="switchTab('videos')"><span class="icon is-small"><i
             class="fas fa-video"></i></span><span>Monitor</span></a></li>
     <li id="documents-tab"><a onclick="switchTab('documents')"><span class="icon is-small"><i
@@ -487,56 +651,69 @@
     </div>
   </div>
 
+  <!-- PREVIEW CONTENT -->
+  <div id="preview-content" class="tab-content slicer-tab">
+    <div id="better-preview-container" class="slicer-pane" style="position: relative; background: #0a0a0a;">
+      <canvas id="better-preview-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
+
+      <!-- Empty state -->
+      <div id="preview-empty-state" class="preview-empty-state">
+        <span class="icon is-large" style="color: #333;"><i class="fas fa-layer-group fa-3x"></i></span>
+        <p class="has-text-grey mt-3" style="font-size:1.1rem;">No G-Code loaded</p>
+        <p class="has-text-grey-dark is-size-7 mt-1">Slice a project first, then come back here to preview layers.</p>
+      </div>
+
+      <!-- Loading spinner -->
+      <div id="preview-loading" class="preview-loading-spinner">
+        <div class="spinner-icon"></div>
+      </div>
+
+      <!-- Layer Counter HUD (top-left) -->
+      <div id="preview-layer-hud" class="preview-layer-hud" style="display:none;">
+        <i class="fas fa-layer-group hud-icon"></i>
+        <span>Layer</span>
+        <span class="hud-current" id="hud-layer-current">0</span>
+        <span class="hud-sep">/</span>
+        <span id="hud-layer-total">0</span>
+      </div>
+
+      <!-- Vertical Layer Slider (right side) -->
+      <div class="vertical-slider-wrap" id="preview-slider-wrap" style="display:none;">
+        <span class="layer-label">Top</span>
+        <span id="better-preview-layer-total" class="tag is-dark">0</span>
+        <input id="better-preview-layer-slider" type="range" min="0" max="0" value="0"
+          oninput="updatePreviewLayer(this.value)" class="vertical-range">
+        <span id="better-preview-layer-current" class="tag is-primary">0</span>
+        <span class="layer-label">Bot</span>
+      </div>
+
+      <!-- Bottom HUD Toolbar -->
+      <div id="better-preview-toolbar" class="preview-toolbar">
+        <div id="preview-meta" class="meta-group">
+          <span class="meta-item" id="preview-meta-layers"></span>
+          <span class="meta-item" id="preview-meta-size"></span>
+          <span class="meta-item" id="preview-meta-height"></span>
+        </div>
+
+        <div class="actions-group">
+          <label class="checkbox is-small has-text-grey-light" style="cursor:pointer;">
+            <input type="checkbox" id="better-preview-render-tubes" onchange="togglePreviewTubes(this.checked)">
+            Tubes
+          </label>
+          <button class="button is-small is-primary is-outlined" onclick="loadLatestGCode()">
+            <span class="icon is-small"><i class="fas fa-sync-alt"></i></span><span>Refresh</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="videos-content" class="tab-content">
     <!-- MONITOR TAB -->
     <!-- iFrame courtesy of HTML Basix - www.htmlbasix.com -->
     <iframe name='iframe1' src='{{ipaddress}}' id='iframe1' class='iframe1 monitor-frame' scrolling='auto'>
     </iframe>
     <!-- End iFrame -->
-  </div>
-  <div id="preview-content" class="tab-content">
-    <div class="columns">
-      <div class="column is-7">
-        <div class="preview-card">
-          <h3 class="title is-5 has-text-primary">Virtual Printer Preview</h3>
-          <div class="preview-printer mt-3">
-            <div id="preview-print" class="preview-print"></div>
-            <div id="preview-nozzle" class="preview-nozzle"></div>
-            <div class="preview-bed"></div>
-          </div>
-        </div>
-      </div>
-      <div class="column is-5">
-        <div class="preview-card">
-          <div class="field">
-            <label class="label is-small has-text-grey-light">G-code File</label>
-            <div class="control">
-              <div class="select is-fullwidth">
-                <select id="preview-gcode-select" onchange="onPreviewFileChange(this.value)"></select>
-              </div>
-            </div>
-          </div>
-          <div class="columns mt-2">
-            <div class="column is-6 has-text-centered">
-              <p class="is-size-7 has-text-grey-light mb-2">Layer Progress</p>
-              <div class="vertical-slider-wrap">
-                <input id="preview-layer-slider" class="vertical-range" type="range" min="0" max="100" step="1" value="0"
-                  oninput="updateVirtualPrinter()">
-              </div>
-            </div>
-            <div class="column is-6 has-text-centered">
-              <p class="is-size-7 has-text-grey-light mb-2">Speed Multiplier</p>
-              <div class="vertical-slider-wrap">
-                <input id="preview-speed-slider" class="vertical-range" type="range" min="10" max="200" step="5" value="100"
-                  oninput="updateVirtualPrinter()">
-              </div>
-            </div>
-          </div>
-          <hr class="has-background-grey-dark">
-          <p id="preview-meta" class="is-size-7 has-text-grey-light"></p>
-        </div>
-      </div>
-    </div>
   </div>
   <div id="documents-content" class="tab-content">
     <p class="text-white">Documents</p>
@@ -574,12 +751,16 @@
       <button class="delete" aria-label="close" onclick="closeSettingsPlaceholder()"></button>
     </header>
     <section class="modal-card-body">
-      <p class="is-size-7 has-text-grey mb-4">These settings are stored per project and used to generate <code>./settings/&lt;project&gt;.ini</code> when you press Slice.</p>
+      <p class="is-size-7 has-text-grey mb-4">These settings are stored per project and used to generate
+        <code>./settings/&lt;project&gt;.ini</code> when you press Slice.
+      </p>
       <div class="field mb-4">
         <label class="label is-small">Settings Mode</label>
         <div class="buttons has-addons settings-mode-toggle">
-          <button id="settings-mode-easy" type="button" class="button is-small is-active" onclick="setSettingsMode('easy')">Easy</button>
-          <button id="settings-mode-expert" type="button" class="button is-small" onclick="setSettingsMode('expert')">Expert</button>
+          <button id="settings-mode-easy" type="button" class="button is-small is-active"
+            onclick="setSettingsMode('easy')">Easy</button>
+          <button id="settings-mode-expert" type="button" class="button is-small"
+            onclick="setSettingsMode('expert')">Expert</button>
         </div>
       </div>
       <div class="columns is-multiline">
@@ -848,7 +1029,8 @@
     </header>
     <section class="modal-card-body">
       <div id="slice-plan-summary" class="slice-plan-box"></div>
-      <p class="is-size-7 has-text-grey mt-3">This step only prepares files and commands. It does not run Print3r yet.</p>
+      <p class="is-size-7 has-text-grey mt-3">This step only prepares files and commands. It does not run Print3r yet.
+      </p>
     </section>
     <footer class="modal-card-foot">
       <button class="button is-primary" onclick="confirmSlicePreparation()">Start Prep</button>
@@ -861,14 +1043,15 @@
   <div class="modal-background" onclick="closeSliceTerminalModal()"></div>
   <div class="modal-card">
     <header class="modal-card-head">
-      <p class="modal-card-title">Slice Preparation Log</p>
+      <p class="modal-card-title">Slice Log</p>
       <button class="delete" aria-label="close" onclick="closeSliceTerminalModal()"></button>
     </header>
     <section class="modal-card-body">
       <div id="slice-terminal-output" class="slice-terminal"></div>
     </section>
     <footer class="modal-card-foot">
-      <button id="slice-start-btn" class="button is-primary" onclick="startPreparedSlice()" disabled>Start Slice</button>
+      <button id="slice-start-btn" class="button is-primary" onclick="startPreparedSlice()" disabled>Start
+        Slice</button>
       <button class="button" onclick="closeSliceTerminalModal()">Close</button>
     </footer>
   </div>
@@ -877,6 +1060,8 @@
 <script>
   let slicer = null;
   let slicerInitPromise = null;
+  let previewer = null;
+  let previewerInitPromise = null;
   let projectReady = false;
   let suppressAutosave = false;
   let autosaveTimer = null;
@@ -889,9 +1074,7 @@
   let preparedSliceCommands = [];
   let preparedSliceProfile = '';
   let sliceRunning = false;
-  let previewReady = false;
-  let previewFiles = [];
-  let previewMeta = null;
+  let currentGCodePath = null;
   const PRINT3R_SETTINGS_KEY_PREFIX = 'katana_print3r_settings::';
   const SETTINGS_MODE_KEY = 'katana_settings_mode';
   let settingsMode = localStorage.getItem(SETTINGS_MODE_KEY) || 'easy';
@@ -928,45 +1111,20 @@
 
   function setSliceAccess(enabled) {
     const sliceTab = document.getElementById('printers-tab');
+    const previewTab = document.getElementById('preview-tab');
     if (!sliceTab) return;
     projectReady = enabled;
     sliceTab.classList.toggle('is-disabled', !enabled);
-    if (!enabled && sliceTab.classList.contains('is-active')) {
+    if (previewTab) previewTab.classList.toggle('is-disabled', !enabled);
+    if (!enabled && (sliceTab.classList.contains('is-active') || (previewTab && previewTab.classList.contains('is-active')))) {
       switchTab('home');
     }
   }
 
-  function setPreviewAccess(enabled) {
-    const previewTab = document.getElementById('preview-tab');
-    if (!previewTab) return;
-    previewReady = enabled;
-    previewTab.classList.toggle('is-disabled', !enabled);
-    if (!enabled && previewTab.classList.contains('is-active')) {
-      switchTab('printers');
-    }
-  }
-
-  function resetPreviewState() {
-    setPreviewAccess(false);
-    previewFiles = [];
-    previewMeta = null;
-    populatePreviewFiles([]);
-    const metaEl = document.getElementById('preview-meta');
-    if (metaEl) metaEl.textContent = '';
-    const layer = document.getElementById('preview-layer-slider');
-    const speed = document.getElementById('preview-speed-slider');
-    if (layer) layer.value = '0';
-    if (speed) speed.value = '100';
-    updateVirtualPrinter();
-  }
 
   function switchTab(tabName) {
     if (tabName === 'printers' && !projectReady) {
       showMessageModal('Create or open a project first.');
-      return;
-    }
-    if (tabName === 'preview' && !previewReady) {
-      showMessageModal('Run slicing first to unlock Preview.');
       return;
     }
     document.querySelectorAll('.tabs li').forEach(t => t.classList.remove('is-active'));
@@ -983,6 +1141,18 @@
           slicer.onResize();
           requestAnimationFrame(() => slicer.onResize());
         }
+      });
+    }
+    if (tabName === 'preview') {
+      ensurePreviewer().then(() => {
+        resizePreviewViewport();
+        if (betterPreviewer) betterPreviewer.onResize();
+        // Delayed resize to ensure canvas picks up correct dimensions after tab transition
+        setTimeout(() => {
+          resizePreviewViewport();
+          if (betterPreviewer) betterPreviewer.onResize();
+        }, 100);
+        loadLatestGCode();
       });
     }
     if (tabName === 'videos') {
@@ -1016,7 +1186,8 @@
           previous_filename: localStorage.getItem('katana_last_project'),
           data: {
             models: slicer.exportState(),
-            thumbnail: slicer.getScreenshot()
+            thumbnail: slicer.getScreenshot(),
+            gcode_path: currentGCodePath
           }
         })
       });
@@ -1068,7 +1239,6 @@
   document.addEventListener('DOMContentLoaded', async () => {
     bindGlobalShortcuts();
     setSliceAccess(false);
-    resetPreviewState();
     switchTab('home');
     loadProjectList();
 
@@ -1143,15 +1313,27 @@
     initDragDropUpload();
     window.addEventListener('resize', () => {
       resizeSlicerViewport();
+      resizePreviewViewport();
       resizeMonitorFrame();
       if (slicer) slicer.onResize();
+      if (previewer) previewer.onResize();
     });
     resizeSlicerViewport();
+    resizePreviewViewport();
     resizeMonitorFrame();
   });
 
   function resizeSlicerViewport() {
     const pane = document.getElementById('slicer-viewport');
+    if (!pane) return;
+    const rect = pane.getBoundingClientRect();
+    const minHeight = 320;
+    const nextHeight = Math.max(minHeight, Math.ceil(window.innerHeight - rect.top));
+    pane.style.height = `${nextHeight}px`;
+  }
+
+  function resizePreviewViewport() {
+    const pane = document.getElementById('better-preview-container');
     if (!pane) return;
     const rect = pane.getBoundingClientRect();
     const minHeight = 320;
@@ -1402,7 +1584,7 @@
 
   function confirmSlicePreparation() {
     closeSlicePlanModal();
-    runSliceGenerateProfile();
+    runSliceGenerateProfile({ autoStart: false });
   }
 
   async function ensureSlicer() {
@@ -1450,6 +1632,219 @@
       console.error("3.JS LOAD FAILURE:", err);
       document.getElementById('slicer-status').textContent = "ERROR: Three.js Failed to Load";
       return null;
+    }
+  }
+
+  // ── Local Native Preview: using custom local Three.js parser ──
+  let betterPreviewer = null;
+  let betterPreviewInitPromise = null;
+
+  async function ensurePreviewer() {
+    if (betterPreviewer) return betterPreviewer;
+    if (betterPreviewInitPromise) return betterPreviewInitPromise;
+    betterPreviewInitPromise = initPreviewer().finally(() => { betterPreviewInitPromise = null; });
+    return betterPreviewInitPromise;
+  }
+
+  async function initPreviewer() {
+    const container = document.getElementById('better-preview-container');
+    const canvas = document.getElementById('better-preview-canvas');
+    if (!container || !canvas) return null;
+    if (betterPreviewer) return betterPreviewer;
+
+    try {
+      // Import our local PreviewUI module dynamically
+      const PreviewUIModule = await import('/static/preview.js');
+      const PreviewUI = PreviewUIModule.default;
+
+      // Fetch printer bed config
+      let plateX = 220, plateY = 220, buildH = 250;
+      try {
+        const cfgRes = await fetch('/api/config');
+        const cfg = await cfgRes.json();
+        const bed = cfg?.selected_printer?.bed_size || [220, 220, 250];
+        plateX = bed[0] || 220;
+        plateY = bed[1] || 220;
+        buildH = bed[2] || 250;
+      } catch (_) { /* use defaults */ }
+
+      const nativeViewer = new PreviewUI(canvas, {
+        plateSize: plateX,
+        buildHeight: buildH,
+        extrusionColor: 0x00d1b2,
+        travelColor: 0x222222,
+        backgroundColor: 0x0a0a0a
+      });
+
+      // Adapter wrapping the viewer with a clean API
+      class GCodePreviewAdapter {
+        constructor(v) { this._viewer = v; }
+        onResize() { this._viewer.onResize(); }
+        clear() { this._viewer.clear(); }
+        setLayer(idx) { this._viewer.setLayer(idx); }
+        getLayerCount() { return this._viewer.getLayerCount(); }
+        toggleTubes(show) { this._viewer.toggleTubes(show); }
+        async loadGCode(gcode) {
+          await this._viewer.processGCode(gcode);
+          return this.getLayerCount();
+        }
+        resize() { this.onResize(); }
+      }
+
+      betterPreviewer = new GCodePreviewAdapter(nativeViewer);
+      console.log('[katana] local PreviewUI initialized');
+      return betterPreviewer;
+    } catch (err) {
+      console.error('[katana] preview init failed:', err);
+      return null;
+    }
+  }
+
+  function updatePreviewLayer(value) {
+    const idx = parseInt(value, 10);
+    if (betterPreviewer) {
+      betterPreviewer.setLayer(idx);
+      const currentLabel = document.getElementById('better-preview-layer-current');
+      if (currentLabel) currentLabel.textContent = idx;
+      // Update the HUD chip
+      const hudCurrent = document.getElementById('hud-layer-current');
+      if (hudCurrent) hudCurrent.textContent = idx;
+      return;
+    }
+    if (previewer) {
+      previewer.setLayer(idx);
+      const currentLabel = document.getElementById('preview-layer-current');
+      if (currentLabel) currentLabel.textContent = idx;
+    }
+  }
+
+  function togglePreviewTubes(checked) {
+    if (betterPreviewer) { betterPreviewer.toggleTubes(checked); return; }
+    if (previewer) previewer.toggleTubes(checked);
+  }
+
+  function setPreviewEmptyState(visible) {
+    const el = document.getElementById('preview-empty-state');
+    if (el) el.classList.toggle('is-hidden', !visible);
+  }
+
+  function setPreviewLoading(active) {
+    const el = document.getElementById('preview-loading');
+    if (el) el.classList.toggle('is-active', active);
+  }
+
+  function updatePreviewMeta(metadata) {
+    const layersEl = document.getElementById('preview-meta-layers');
+    const sizeEl = document.getElementById('preview-meta-size');
+    const heightEl = document.getElementById('preview-meta-height');
+    if (layersEl) layersEl.innerHTML = metadata && metadata.layers ? `<strong>Layers:</strong> ${metadata.layers}` : '';
+    if (sizeEl) sizeEl.innerHTML = metadata && metadata.maxX ? `<strong>Footprint:</strong> ${metadata.maxX} × ${metadata.maxY} mm` : '';
+    if (heightEl) heightEl.innerHTML = metadata && metadata.maxZ ? `<strong>Height:</strong> ${metadata.maxZ} mm` : '';
+  }
+
+  function resolveGCodeUrl() {
+    if (currentGCodePath) {
+      return `/api/print3r/gcode/${currentGCodePath.split(/[\\\/]/).pop()}`;
+    }
+    if (window.preparedSliceCommands && window.preparedSliceCommands.length > 0) {
+      const fullPath = window.preparedSliceCommands[0].output_gcode;
+      return `/api/print3r/gcode/${fullPath.split(/[\\\/]/).pop()}`;
+    }
+    const slug = getActiveProjectName().toLowerCase().replace(/[^a-z0-9]/g, '_');
+    return `/api/print3r/gcode/${slug}.gcode`;
+  }
+
+  async function loadLatestGCode() {
+    if (!projectReady) return;
+    await ensurePreviewer();
+
+    const gcodeUrl = resolveGCodeUrl();
+    const statusEl = document.getElementById('slicer-status');
+    const sliderWrap = document.getElementById('preview-slider-wrap');
+    const layerHud = document.getElementById('preview-layer-hud');
+
+    setPreviewLoading(true);
+    setPreviewEmptyState(false);
+    updatePreviewMeta(null);
+    // Hide controls while loading
+    if (sliderWrap) sliderWrap.style.display = 'none';
+    if (layerHud) layerHud.style.display = 'none';
+
+    try {
+      const response = await fetch(gcodeUrl);
+      if (!response.ok) {
+        setPreviewLoading(false);
+        setPreviewEmptyState(true);
+        if (statusEl) statusEl.textContent = response.status === 500 ? 'Server error loading G-code' : 'G-Code not found';
+        return;
+      }
+      const gcode = await response.text();
+
+      // Also fetch metadata from the preview API if possible
+      const filename = gcodeUrl.split('/').pop();
+      let metadata = null;
+      try {
+        const metaRes = await fetch(`/api/gcode/preview/${filename}`);
+        if (metaRes.ok) {
+          const metaJson = await metaRes.json();
+          if (metaJson.success && metaJson.metadata) {
+            metadata = {
+              layers: metaJson.metadata.layer_count,
+              maxX: metaJson.metadata.max_x,
+              maxY: metaJson.metadata.max_y,
+              maxZ: metaJson.metadata.max_z,
+              lines: metaJson.metadata.line_count
+            };
+          }
+        }
+      } catch (_) { /* metadata is optional */ }
+
+      // Load into whichever previewer is available
+      let layerCount = 0;
+      if (betterPreviewer) {
+        layerCount = (await betterPreviewer.loadGCode(gcode)) || 0;
+      } else if (previewer) {
+        layerCount = (await previewer.loadGCode(gcode)) || 0;
+      }
+
+      const total = Math.max(0, layerCount - 1);
+
+      // Update slider
+      const slider = document.getElementById('better-preview-layer-slider');
+      const totalLabel = document.getElementById('better-preview-layer-total');
+      const currentLabel = document.getElementById('better-preview-layer-current');
+      if (slider) { slider.max = total; slider.value = total; }
+      if (totalLabel) totalLabel.textContent = total;
+      if (currentLabel) currentLabel.textContent = total;
+
+      // Update HUD chip
+      const hudCurrent = document.getElementById('hud-layer-current');
+      const hudTotal = document.getElementById('hud-layer-total');
+      if (hudCurrent) hudCurrent.textContent = total;
+      if (hudTotal) hudTotal.textContent = total;
+
+      // Show the slider and HUD if we have layers
+      if (layerCount > 0) {
+        if (sliderWrap) sliderWrap.style.display = 'flex';
+        if (layerHud) layerHud.style.display = 'flex';
+      }
+
+      if (metadata) {
+        updatePreviewMeta(metadata);
+      } else {
+        updatePreviewMeta({ layers: layerCount, maxX: null, maxY: null, maxZ: null });
+      }
+
+      setPreviewEmptyState(false);
+      if (statusEl) statusEl.textContent = `Preview loaded: ${layerCount} layers`;
+    } catch (err) {
+      console.warn('Could not load G-code:', err.message);
+      setPreviewEmptyState(true);
+      if (sliderWrap) sliderWrap.style.display = 'none';
+      if (layerHud) layerHud.style.display = 'none';
+      if (statusEl) statusEl.textContent = 'No G-Code found for preview. Slice your project first.';
+    } finally {
+      setPreviewLoading(false);
     }
   }
 
@@ -1501,7 +1896,6 @@
   async function openProject(filename, doSwitch = true) {
     try {
       suppressAutosave = true;
-      resetPreviewState();
       const response = await fetch(`/api/projects/${filename}`);
       const project = await response.json();
       if (!project || project.success === false) {
@@ -1512,6 +1906,7 @@
       setSliceAccess(true);
       document.getElementById('active-project-name').value = project.name;
       updateNavbarProjectName(project.name);
+      currentGCodePath = project.gcode_path || null;
 
       if (doSwitch) switchTab('printers');
 
@@ -1547,7 +1942,7 @@
 
       localStorage.setItem('katana_last_project', result.filename);
       setSliceAccess(true);
-      resetPreviewState();
+      currentGCodePath = null;
       const nameInput = document.getElementById('active-project-name');
       if (nameInput) nameInput.value = name.trim();
       updateNavbarProjectName(name.trim());
@@ -1720,7 +2115,7 @@
   }
 
   function runSlice() {
-    openSlicePlanModal();
+    runSliceGenerateProfile({ autoStart: true });
   }
 
   function getActiveProjectName() {
@@ -1886,46 +2281,33 @@
     return Object.assign({}, defaults, saved);
   }
 
-  async function runSliceGenerateProfile() {
+  async function runSliceGenerateProfile({ autoStart = true } = {}) {
     if (!projectReady) {
       showMessageModal('Create or open a project first.', 'Slice');
       return;
     }
-    openSliceTerminalModal();
-    clearSliceTerminal();
-    setPreviewAccess(false);
-    preparedSliceCommands = [];
-    preparedSliceProfile = '';
-    setSliceStartEnabled(false);
-    appendSliceTerminal('[katana] slice prepare started');
-    const projectName = getActiveProjectName();
-    let settings;
-    try {
-      settings = await loadPrint3rSettingsForCurrentProject();
-      appendSliceTerminal(`[katana] loaded settings for "${projectName}"`);
-    } catch (err) {
-      appendSliceTerminal(`[error] settings load failed: ${err.message}`);
-      showMessageModal(`Could not load settings: ${err.message}`, 'Slice');
-      return;
-    }
+    const sliceBtn = document.querySelector('button[onclick="runSlice()"]');
+    if (sliceBtn) sliceBtn.classList.add('is-loading');
+
+    const status = document.getElementById('slicer-status');
+    if (status) status.textContent = "Preparing slice...";
 
     try {
-      appendSliceTerminal('[katana] generating printer profile...');
+      preparedSliceCommands = [];
+      preparedSliceProfile = '';
+
+      const projectName = getActiveProjectName();
+      const settings = await loadPrint3rSettingsForCurrentProject();
+
       const generateRes = await fetch('/api/print3r/generate_profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_name: projectName,
-          settings
-        })
+        body: JSON.stringify({ project_name: projectName, settings })
       });
       const generated = await generateRes.json();
-      if (!generated.success) {
-        throw new Error(generated.error || 'Failed to generate profile');
-      }
-      appendSliceTerminal(`[ok] profile: ${generated.path}`);
+      if (!generated.success) throw new Error(generated.error || 'Failed to generate profile');
 
-      appendSliceTerminal('[katana] baking transformed models and parsing commands...');
+      if (status) status.textContent = "Baking models and commands...";
       const parseRes = await fetch('/api/print3r/parse_commands', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1937,42 +2319,25 @@
         })
       });
       const parsedPayload = await parseRes.json();
-      if (!parsedPayload.success) {
-        throw new Error(parsedPayload.error || 'Failed to parse commands');
-      }
+      if (!parsedPayload.success) throw new Error(parsedPayload.error || 'Failed to parse commands');
       const parsed = parsedPayload.parsed || {};
       const commands = Array.isArray(parsed.commands) ? parsed.commands : [];
       preparedSliceCommands = commands;
       preparedSliceProfile = parsed.profile_name || generated.profile_name || '';
-      appendSliceTerminal(`[ok] prepared ${commands.length} plate command(s)`);
-      commands.forEach((cmd, idx) => {
-        appendSliceTerminal(``);
-        appendSliceTerminal(`[plate ${cmd.plate_index + 1}] output: ${cmd.output_gcode}`);
-        if (cmd.baked_dir) appendSliceTerminal(`[plate ${cmd.plate_index + 1}] baked dir: ${cmd.baked_dir}`);
-        const models = Array.isArray(cmd.models) ? cmd.models : [];
-        models.forEach((m) => appendSliceTerminal(`  baked> ${m}`));
-        appendSliceTerminal(`  argv> ${Array.isArray(cmd.argv) ? cmd.argv.join(' ') : ''}`);
-      });
-      appendSliceTerminal('');
-      appendSliceTerminal('[katana] done. ready to slice.');
-      if (commands.length > 0) {
-        appendSliceTerminal('[katana] click "Start Slice" to run print3r -vv.');
-        setSliceStartEnabled(true);
-      } else {
-        appendSliceTerminal('[katana] no plate commands were generated.');
-      }
 
-      const status = document.getElementById('slicer-status');
-      const profileRef = generated.profile_name ? `--printer=${generated.profile_name}` : '';
-      if (status) status.textContent = `Prepared ${commands.length} plate command(s) ${profileRef}`;
-      showMessageModal(
-        `Prepared ${commands.length} plate command(s) with baked models.\nUse Start Slice in the prep log to execute print3r -vv.\n\nReference with:\n${profileRef || '--printer=<profile>'}`,
-        'Slice'
-      );
+      if (commands.length > 0) {
+        if (autoStart) {
+          if (status) status.textContent = "Starting Slicer Engine...";
+          await startPreparedSlice();
+        }
+      } else {
+        throw new Error('No plate commands were generated.');
+      }
     } catch (err) {
-      appendSliceTerminal(`[error] ${err.message}`);
-      setSliceStartEnabled(false);
-      showMessageModal(`Slice failed: ${err.message}`, 'Slice');
+      showMessageModal(`Slice failed: ${err.message}`, 'Slice Error');
+      if (status) status.textContent = "Slice failed";
+    } finally {
+      if (sliceBtn) sliceBtn.classList.remove('is-loading');
     }
   }
 
@@ -2003,128 +2368,37 @@
     }
   }
 
-  function derivePreviewFilesFromCommands(commands) {
-    const files = [];
-    (commands || []).forEach((cmd) => {
-      const out = cmd && cmd.output_gcode ? String(cmd.output_gcode) : '';
-      if (!out) return;
-      const name = out.split('/').pop();
-      if (name && !files.includes(name)) files.push(name);
-    });
-    return files;
-  }
-
-  async function loadPreviewMetadata(filename) {
-    const response = await fetch(`/api/gcode/preview/${encodeURIComponent(filename)}`);
-    const result = await response.json();
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to load preview metadata');
-    }
-    previewMeta = result.metadata || null;
-    const metaEl = document.getElementById('preview-meta');
-    if (metaEl && previewMeta) {
-      metaEl.textContent = [
-        `File: ${result.filename}`,
-        `Lines: ${previewMeta.line_count}`,
-        `Layers: ${previewMeta.layer_count}`,
-        `Bounds: ${previewMeta.max_x} x ${previewMeta.max_y} x ${previewMeta.max_z} mm`,
-        `Extrusion: ${previewMeta.max_extrusion}`
-      ].join(' | ');
-    }
-    updateVirtualPrinter();
-  }
-
-  async function onPreviewFileChange(filename) {
-    if (!filename) return;
-    try {
-      await loadPreviewMetadata(filename);
-    } catch (err) {
-      showMessageModal(`Preview load failed: ${err.message}`, 'Preview');
-    }
-  }
-
-  function populatePreviewFiles(files) {
-    previewFiles = files || [];
-    const select = document.getElementById('preview-gcode-select');
-    if (!select) return;
-    if (previewFiles.length === 0) {
-      select.innerHTML = '<option value="">No gcode files</option>';
-      return;
-    }
-    select.innerHTML = previewFiles
-      .map((f) => `<option value="${f}">${f}</option>`)
-      .join('');
-  }
-
-  function updateVirtualPrinter() {
-    const printEl = document.getElementById('preview-print');
-    const nozzleEl = document.getElementById('preview-nozzle');
-    const layerSlider = document.getElementById('preview-layer-slider');
-    const speedSlider = document.getElementById('preview-speed-slider');
-    if (!printEl || !nozzleEl || !layerSlider || !speedSlider) return;
-
-    const progress = Math.max(0, Math.min(100, Number(layerSlider.value || 0))) / 100;
-    const speed = Math.max(10, Math.min(200, Number(speedSlider.value || 100))) / 100;
-    const maxHeight = 300;
-    const printHeight = Math.max(0, Math.round(maxHeight * progress));
-    printEl.style.height = `${printHeight}px`;
-    nozzleEl.style.bottom = `${24 + printHeight}px`;
-
-    const duration = Math.max(0.05, 0.25 / speed);
-    printEl.style.transitionDuration = `${duration}s`;
-    nozzleEl.style.transitionDuration = `${duration}s`;
-  }
-
   async function startPreparedSlice() {
     if (sliceRunning) return;
-    if (!preparedSliceCommands || preparedSliceCommands.length === 0) {
-      showMessageModal('No prepared commands. Run prep first.', 'Slice');
-      return;
-    }
+    if (!preparedSliceCommands || preparedSliceCommands.length === 0) return;
+
     sliceRunning = true;
-    setSliceStartLoading(true);
-    appendSliceTerminal('');
-    appendSliceTerminal(`[katana] starting slice execution (${preparedSliceCommands.length} command(s))`);
-    if (preparedSliceProfile) {
-      appendSliceTerminal(`[katana] profile: --printer=${preparedSliceProfile}`);
-    }
+    const status = document.getElementById('slicer-status');
 
     let hadError = false;
     for (let i = 0; i < preparedSliceCommands.length; i += 1) {
+      if (status) status.textContent = `Slicing plate ${i + 1}/${preparedSliceCommands.length}...`;
       const cmd = preparedSliceCommands[i];
-      appendSliceTerminal('');
-      appendSliceTerminal(`[katana] running command ${i + 1}/${preparedSliceCommands.length} (plate ${cmd.plate_index + 1})`);
       try {
         await streamPrint3rCommand(cmd);
       } catch (err) {
         hadError = true;
-        appendSliceTerminal(`[error] ${err.message}`);
         break;
       }
     }
 
-    appendSliceTerminal('');
-    appendSliceTerminal(hadError ? '[katana] slice run finished with errors.' : '[katana] slice run complete.');
-    const status = document.getElementById('slicer-status');
-    if (status) status.textContent = hadError ? 'Slice failed' : 'Slice complete';
     if (!hadError) {
-      const files = derivePreviewFilesFromCommands(preparedSliceCommands);
-      populatePreviewFiles(files);
-      if (files.length > 0) {
-        setPreviewAccess(true);
-        const select = document.getElementById('preview-gcode-select');
-        if (select) {
-          select.value = files[0];
-        }
-        try {
-          await loadPreviewMetadata(files[0]);
-        } catch (err) {
-          appendSliceTerminal(`[warn] preview metadata load failed: ${err.message}`);
-        }
+      if (preparedSliceCommands && preparedSliceCommands.length > 0) {
+        currentGCodePath = preparedSliceCommands[0].output_gcode;
+        performAutosave(true);
       }
+      if (status) status.textContent = "Slice complete";
+      switchTab('preview');
+    } else {
+      if (status) status.textContent = "Slice failed";
+      showMessageModal('Slice process encountered an error.', 'Slice Error');
     }
     sliceRunning = false;
-    setSliceStartEnabled(!hadError && preparedSliceCommands.length > 0);
   }
 
   async function openSettingsPlaceholder() {

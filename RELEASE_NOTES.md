@@ -1,5 +1,28 @@
 # Katana Release Notes
 
+## Version 6.0.0
+
+### 🚀 Major Features
+- **Native G-Code Preview Engine**: Replaced external unpkg dependencies with a custom-built, ultra-fast G-Code parser and native Three.js 3D visualizer.
+- **Offline Compatibility**: All preview features now run completely offline utilizing the internally bundled Three.js library.
+- **IceSL-style UI Redesign**: The preview tab features a sleek new aesthetic with frosted-glass HUD overlays, an integrated metadata bar, and a native vertical scrub slider for real-time layer inspection.
+- **Hardware-Accelerated Scrubbing**: Scrubbing through layers now leverages batched WebGL buffers for instantaneous, 60 FPS performance even on massive files.
+
+---
+
+## Version 5.0.2
+
+### 🚀 Fixes
+- Preview tab stays available unless the workspace changes, and clicking the Katana logo now keeps you in the web UI instead of reloading.
+- Displayed collisions ignore embossed/debossed text, so those labels no longer trigger placement errors.
+- Added Moonraker upload from the preview tab and refreshed the log after slicing.
+
+### 🧭 Preview
+- Rebuilt the tab into a Cura-style preview with a bed view, layer/speed sliders, and metadata hints that closely mirror Cura’s review panel.
+- Rebuilt the tab into a Cura-like “Slice Review” pane with a review bed, progress stats, and contextual layer hints.
+
+---
+
 ## Version 5.0.0
 
 ### 🚀 Major Features
