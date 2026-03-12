@@ -297,11 +297,28 @@ def install_print3r():
     
     # CuraEngine is the preferred slicer (much faster than Slic3r)
     cura_engine = shutil.which("CuraEngine") or shutil.which("curaengine")
-    if cura_engine is None:
+    cura_engine4 = shutil.which("CuraEngine4") or shutil.which("curaengine4")
+    
+    if cura_engine is None and cura_engine4 is None:
         warn("CuraEngine not found - recommended for fast slicing")
         deps_found = False
+    elif cura_engine is not None and cura_engine4 is None:
+        success(f"CuraEngine found at {cura_engine}")
+        step("Creating CuraEngine4 alias for Print3r compatibility...")
+        try:
+            if SYSTEM == "windows":
+                dest = os.path.join(os.path.dirname(cura_engine), "CuraEngine4.exe")
+                shutil.copy2(cura_engine, dest)
+                success(f"Copied {cura_engine} to {dest}")
+            else:
+                dest = os.path.join(os.path.dirname(cura_engine), "CuraEngine4")
+                run(["sudo", "ln", "-sf", cura_engine, dest], check=False)
+                success(f"Symlinked {cura_engine} to {dest}")
+        except Exception as e:
+            warn(f"Failed to create CuraEngine4 alias: {e}")
+            warn("Please manually create an alias or copy CuraEngine to CuraEngine4 in your PATH")
     else:
-        success(f"CuraEngine found at {cura_engine} (fast slicing enabled)")
+        success(f"CuraEngine4 found at {cura_engine4} (fast slicing enabled)")
     
     # Slic3r is optional fallback
     if shutil.which("slic3r") is None:
@@ -312,16 +329,16 @@ def install_print3r():
     if not deps_found:
         warn("Some Print3r dependencies are missing. Install them for full functionality:")
         if SYSTEM == "linux":
-            step("  apt: sudo apt install perl openscad cura-engine")
+            step("  apt: sudo apt install perl openscad")
+            step("  CuraEngine Install: bash platform_release/install_curaengine_linux.sh")
         elif SYSTEM == "darwin":
             step("  brew install --cask openscad")
-            step("  brew install curaengine")
             step("  perl is included with macOS")
+            step("  CuraEngine Install: bash platform_release/install_curaengine_macos.sh")
         elif SYSTEM == "windows":
             step("  winget install StrawberryPerl.StrawberryPerl")
             step("  winget install OpenSCAD.OpenSCAD")
-            step("  CuraEngine: download from https://github.com/Ultimaker/CuraEngine/releases")
-            step("             or install via MSYS2: pacman -S curaengine")
+            step("  CuraEngine Install: platform_release\\install_curaengine_windows.bat")
 
     # Clone Print3r if not already present
     if os.path.exists(PRINT3R_DIR):

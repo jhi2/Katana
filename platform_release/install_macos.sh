@@ -28,6 +28,10 @@ brew install --cask openscad || echo -e "${YELLOW}⚠ OpenSCAD installation skip
 # Install CuraEngine standalone (not full Cura)
 echo -e "▸ Installing CuraEngine (standalone slicer)..."
 brew install curaengine || echo -e "${YELLOW}⚠ CuraEngine may need manual install from https://github.com/Ultimaker/CuraEngine/releases${NC}"
+if command -v CuraEngine &> /dev/null && ! command -v CuraEngine4 &> /dev/null; then
+    echo -e "▸ Creating CuraEngine4 alias for Print3r compatibility..."
+    sudo ln -sf $(command -v CuraEngine) /usr/local/bin/CuraEngine4
+fi
 
 # Create and enter Katana directory
 INSTALL_DIR="$HOME/Katana"

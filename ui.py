@@ -614,7 +614,13 @@ def parse_print3r_commands():
         payload = request.get_json() or {}
         project_json_path = _resolve_project_json_path_from_payload(payload)
         ini_path = _resolve_profile_ini_path_from_payload(payload)
-        slicer = str(payload.get("slicer", "slic3r")).strip() or "slic3r"
+        import shutil
+        slicer = str(payload.get("slicer", "auto")).strip() or "auto"
+        if slicer == "auto":
+            if shutil.which("CuraEngine4") or shutil.which("curaengine4"):
+                slicer = "cura4"
+            else:
+                slicer = "slic3r"
         bake_models = payload.get("bake_models", True)
         if isinstance(bake_models, str):
             bake_models = bake_models.lower() not in ("0", "false", "no", "off")

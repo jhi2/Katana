@@ -81,17 +81,20 @@ if ! curl -f -L -o CuraEngine "$BINARY_URL"; then
         
         # Copy the binary
         sudo cp build/Release/CuraEngine "$INSTALL_DIR/"
+        sudo ln -sf "$INSTALL_DIR/CuraEngine" "$INSTALL_DIR/CuraEngine4"
         cd /
         rm -rf "$BUILD_DIR"
     else
         # Binary downloaded successfully
         sudo chmod +x CuraEngine
         sudo mv CuraEngine "$INSTALL_DIR/"
+        sudo ln -sf "$INSTALL_DIR/CuraEngine" "$INSTALL_DIR/CuraEngine4"
     fi
 else
     # Binary downloaded successfully
     sudo chmod +x CuraEngine
     sudo mv CuraEngine "$INSTALL_DIR/"
+    sudo ln -sf "$INSTALL_DIR/CuraEngine" "$INSTALL_DIR/CuraEngine4"
 fi
 
 echo "Done!"

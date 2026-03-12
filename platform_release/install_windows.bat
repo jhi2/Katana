@@ -19,6 +19,11 @@ where CuraEngine >nul 2>&1 || (
     echo   Or install from MSYS2: pacman -S curaengine
 )
 
+where CuraEngine4 >nul 2>&1 || (
+    echo Note: Print3r expects "CuraEngine4". If you have CuraEngine.exe installed,
+    echo       please make a copy and name it CuraEngine4.exe in your PATH.
+)
+
 set PATH=%PATH%;%USERPROFILE%\AppData\Local\Programs\Python\Python312\;%USERPROFILE%\AppData\Local\Programs\Python\Python312\Scripts\;%ProgramFiles%\OpenSCAD\;%ProgramFiles%\StrawberryPerl\perl\bin\;%ProgramFiles%\StrawberryPerl\c\bin\
 
 REM Create and enter Katana directory

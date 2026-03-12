@@ -25,8 +25,7 @@ For version history and changes, see [RELEASE_NOTES.md](./RELEASE_NOTES.md).
 
 Katana currently focuses on project/workspace management and model staging.
 
-- There is a **Slice** placeholder button in the UI.
-- Actual slicing pipeline execution is not implemented yet in the main workspace (`alert("no slicer yet")` placeholder).
+- The **Slice** workflow is implemented in the main workspace.
 
 ## Requirements
 

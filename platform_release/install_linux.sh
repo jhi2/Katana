@@ -27,7 +27,7 @@ install_deps() {
     esac
 }
 
-# Ensure CuraEngine is available (faster than Slic3r)
+// Ensure CuraEngine is available (faster than Slic3r)
 check_curaengine() {
     if ! command -v CuraEngine &> /dev/null && ! command -v curaengine &> /dev/null; then
         echo -e "${YELLOW}⚠ CuraEngine not found in PATH${NC}"
@@ -35,6 +35,10 @@ check_curaengine() {
         echo -e "  Install with: sudo apt install cura-engine (Debian/Ubuntu)"
     else
         echo -e "${GREEN}✓ CuraEngine found (fast slicing enabled)${NC}"
+        if ! command -v CuraEngine4 &> /dev/null; then
+            echo -e "▸ Creating CuraEngine4 alias for Print3r compatibility..."
+            sudo ln -sf $(command -v CuraEngine || command -v curaengine) /usr/local/bin/CuraEngine4
+        fi
     fi
 }
 
