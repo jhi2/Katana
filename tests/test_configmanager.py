@@ -2,6 +2,7 @@ import os
 import unittest
 
 from configmanager import ConfigManager
+from validators import ValidationError
 
 
 class ConfigManagerTests(unittest.TestCase):
@@ -18,6 +19,11 @@ class ConfigManagerTests(unittest.TestCase):
         test_project = os.path.join(self.cm.projects_dir, "UnitTestProject.json")
         if os.path.exists(test_project):
             os.remove(test_project)
+
+        # Remove any thumbnails written by tests.
+        thumb_path = os.path.join(self.cm.thumbnail_dir, "UnitTestProject.png")
+        if os.path.exists(thumb_path):
+            os.remove(thumb_path)
 
     def test_save_and_load_config_round_trip(self):
         self.cm.config = {"printers": [{"data": {"name": "X"}}]}
@@ -64,6 +70,33 @@ class ConfigManagerTests(unittest.TestCase):
         self.assertTrue(os.path.exists(new_path))
 
         self.assertTrue(self.cm.delete_project(new_filename))
+
+    def test_get_ip_address_formats_url(self):
+        self.cm.config = {"selected_printer": {"ip_address": "192.168.1.2"}}
+        self.assertEqual(self.cm.get_ip_address(), "http://192.168.1.2")
+
+        self.cm.config = {"selected_printer": {"ip_address": "http://printer.local:7125"}}
+        self.assertEqual(self.cm.get_ip_address(), "http://printer.local:7125")
+
+        self.cm.config = {"selected_printer": {"ip_address": ""}}
+        self.assertEqual(self.cm.get_ip_address(), "about:blank")
+
+    def test_persist_thumbnail_writes_png(self):
+        # 1x1 transparent PNG
+        thumbnail_data = (
+            "data:image/png;base64,"
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVQYV2NgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII="
+        )
+        result = self.cm._persist_thumbnail("UnitTestProject", thumbnail_data)
+        self.assertTrue(result.endswith("/static/thumbnails/UnitTestProject.png"))
+        abs_path = os.path.join(self.cm.thumbnail_dir, "UnitTestProject.png")
+        self.assertTrue(os.path.exists(abs_path))
+
+    def test_resolve_project_path_rejects_invalid(self):
+        with self.assertRaises(ValueError):
+            self.cm._resolve_project_path("not-json.txt")
+        with self.assertRaises(ValidationError):
+            self.cm._resolve_project_path("../escape.json")
 
 
 if __name__ == "__main__":
