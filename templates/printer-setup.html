@@ -219,6 +219,21 @@
     let selectedProfile = null;
     let selectedType = null;
 
+    function showSetupMessage(message, title = 'Notice') {
+        const modal = document.getElementById('setup-message-modal');
+        const body = document.getElementById('setup-message-body');
+        const titleEl = document.getElementById('setup-message-title');
+        if (!modal || !body || !titleEl) return;
+        titleEl.textContent = title;
+        body.textContent = message;
+        modal.classList.add('is-active');
+    }
+
+    function closeSetupMessage() {
+        const modal = document.getElementById('setup-message-modal');
+        if (modal) modal.classList.remove('is-active');
+    }
+
     function selectProfile(index, type) {
         // Remove previous selection
         document.querySelectorAll('.card').forEach(card => {
@@ -295,12 +310,12 @@
                     if (data.success) {
                         window.location.href = '{{ url_for("load") }}';
                     } else {
-                        alert('Error saving printer selection: ' + (data.error || 'Unknown error'));
+                        showSetupMessage('Error saving printer selection: ' + (data.error || 'Unknown error'), 'Setup Error');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error saving printer selection');
+                    showSetupMessage('Error saving printer selection', 'Setup Error');
                 });
         }
     }
@@ -360,5 +375,21 @@
             });
     });
 </script>
+
+<div id="setup-message-modal" class="modal">
+    <div class="modal-background" onclick="closeSetupMessage()"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p id="setup-message-title" class="modal-card-title">Notice</p>
+            <button class="delete" aria-label="close" onclick="closeSetupMessage()"></button>
+        </header>
+        <section class="modal-card-body">
+            <p id="setup-message-body"></p>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-primary" onclick="closeSetupMessage()">OK</button>
+        </footer>
+    </div>
+</div>
 
 {% endblock %}

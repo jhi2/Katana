@@ -1055,6 +1055,23 @@
   </div>
 </div>
 
+<div id="confirm-modal" class="modal">
+  <div class="modal-background" onclick="closeConfirmModal(false)"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p id="confirm-modal-title" class="modal-card-title">Confirm</p>
+      <button class="delete" aria-label="close" onclick="closeConfirmModal(false)"></button>
+    </header>
+    <section class="modal-card-body">
+      <p id="confirm-modal-body"></p>
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-danger" onclick="closeConfirmModal(true)">Confirm</button>
+      <button class="button" onclick="closeConfirmModal(false)">Cancel</button>
+    </footer>
+  </div>
+</div>
+
 <div id="slice-plan-modal" class="modal">
   <div class="modal-background" onclick="closeSlicePlanModal()"></div>
   <div class="modal-card">
@@ -1531,6 +1548,30 @@
   function closeMessageModal() {
     const modal = document.getElementById('message-modal');
     if (modal) modal.classList.remove('is-active');
+  }
+
+  let confirmModalResolve = null;
+
+  function showConfirmModal(message, title = "Confirm") {
+    const modal = document.getElementById('confirm-modal');
+    const body = document.getElementById('confirm-modal-body');
+    const titleEl = document.getElementById('confirm-modal-title');
+    if (!modal || !body || !titleEl) return Promise.resolve(false);
+    titleEl.textContent = title;
+    body.textContent = message;
+    modal.classList.add('is-active');
+    return new Promise((resolve) => {
+      confirmModalResolve = resolve;
+    });
+  }
+
+  function closeConfirmModal(confirmed) {
+    const modal = document.getElementById('confirm-modal');
+    if (modal) modal.classList.remove('is-active');
+    if (confirmModalResolve) {
+      confirmModalResolve(!!confirmed);
+      confirmModalResolve = null;
+    }
   }
 
   function openSliceTerminalModal() {
@@ -2051,7 +2092,8 @@
   }
 
   async function deleteProject(filename) {
-    if (!confirm("Delete this project?")) return;
+    const confirmed = await showConfirmModal("Delete this project?", "Delete Project");
+    if (!confirmed) return;
     try {
       const res = await fetch(`/api/projects/${filename}`, { method: 'DELETE' });
       const data = await res.json();
@@ -2106,8 +2148,9 @@
     }
   }
 
-  function clearPlate() {
-    if (confirm("Clear plate?") && slicer) {
+  async function clearPlate() {
+    const confirmed = await showConfirmModal("Clear plate?", "Clear Plate");
+    if (confirmed && slicer) {
       slicer.clearModels();
       queueAutosave();
     }
