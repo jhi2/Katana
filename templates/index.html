@@ -456,6 +456,30 @@
     color: #555;
   }
 
+  /* ── Layer Progress Slider (bottom center) ── */
+  .preview-progress-wrap {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 74px;
+    z-index: 11;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: rgba(10, 10, 10, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+  }
+
+  .preview-progress-range {
+    width: 280px;
+    accent-color: #00d1b2;
+    cursor: pointer;
+    background: transparent;
+  }
+
   /* ── Loading Spinner ── */
   .preview-loading-spinner {
     position: absolute;
@@ -687,6 +711,14 @@
         <span class="layer-label">Bot</span>
       </div>
 
+      <!-- Horizontal Layer Progress Slider -->
+      <div id="preview-progress-wrap" class="preview-progress-wrap" style="display:none;">
+        <span class="tag is-dark">Layer Progress</span>
+        <input id="preview-progress-slider" type="range" min="0" max="100" value="100"
+          oninput="updatePreviewLayerProgress(this.value)" class="preview-progress-range">
+        <span id="preview-progress-value" class="tag is-primary">100%</span>
+      </div>
+
       <!-- Bottom HUD Toolbar -->
       <div id="better-preview-toolbar" class="preview-toolbar">
         <div id="preview-meta" class="meta-group">
@@ -696,10 +728,13 @@
         </div>
 
         <div class="actions-group">
-          <label class="checkbox is-small has-text-grey-light" style="cursor:pointer;">
-            <input type="checkbox" id="better-preview-render-tubes" onchange="togglePreviewTubes(this.checked)">
-            Tubes
-          </label>
+          <div id="preview-plate-wrap" class="field is-grouped is-grouped-multiline" style="display:none; align-items:center;">
+            <div class="control">
+              <div class="select is-small">
+                <select id="preview-plate-select" onchange="onPreviewPlateChange()"></select>
+              </div>
+            </div>
+          </div>
           <button class="button is-small is-primary is-outlined" onclick="loadLatestGCode()">
             <span class="icon is-small"><i class="fas fa-sync-alt"></i></span><span>Refresh</span>
           </button>
@@ -1072,6 +1107,8 @@
   let dragDepth = 0;
   let supportPaintActive = false;
   let preparedSliceCommands = [];
+  let previewPlateIndex = 0;
+  let previewLayerProgress = 100;
   let preparedSliceProfile = '';
   let sliceRunning = false;
   let currentGCodePath = null;
@@ -1152,6 +1189,8 @@
           resizePreviewViewport();
           if (betterPreviewer) betterPreviewer.onResize();
         }, 100);
+        updatePreviewPlateControls();
+        setPreviewLayerProgress(previewLayerProgress, true);
         loadLatestGCode();
       });
     }
@@ -1682,6 +1721,7 @@
         onResize() { this._viewer.onResize(); }
         clear() { this._viewer.clear(); }
         setLayer(idx) { this._viewer.setLayer(idx); }
+        setLayerProgress(progress) { this._viewer.setLayerProgress(progress); }
         getLayerCount() { return this._viewer.getLayerCount(); }
         toggleTubes(show) { this._viewer.toggleTubes(show); }
         async loadGCode(gcode) {
@@ -1705,22 +1745,36 @@
     if (betterPreviewer) {
       betterPreviewer.setLayer(idx);
       const currentLabel = document.getElementById('better-preview-layer-current');
-      if (currentLabel) currentLabel.textContent = idx;
+      if (currentLabel) currentLabel.textContent = idx + 1;
       // Update the HUD chip
       const hudCurrent = document.getElementById('hud-layer-current');
-      if (hudCurrent) hudCurrent.textContent = idx;
+      if (hudCurrent) hudCurrent.textContent = idx + 1;
+      setPreviewLayerProgress(previewLayerProgress, true);
       return;
     }
     if (previewer) {
       previewer.setLayer(idx);
       const currentLabel = document.getElementById('preview-layer-current');
-      if (currentLabel) currentLabel.textContent = idx;
+      if (currentLabel) currentLabel.textContent = idx + 1;
+      setPreviewLayerProgress(previewLayerProgress, true);
     }
   }
 
-  function togglePreviewTubes(checked) {
-    if (betterPreviewer) { betterPreviewer.toggleTubes(checked); return; }
-    if (previewer) previewer.toggleTubes(checked);
+  function updatePreviewLayerProgress(value) {
+    setPreviewLayerProgress(parseInt(value, 10), false);
+  }
+
+  function setPreviewLayerProgress(value, syncSlider) {
+    const clamped = Math.max(0, Math.min(100, Number(value)));
+    previewLayerProgress = isNaN(clamped) ? 100 : clamped;
+    const slider = document.getElementById('preview-progress-slider');
+    const label = document.getElementById('preview-progress-value');
+    if (syncSlider && slider) slider.value = previewLayerProgress;
+    if (label) label.textContent = `${previewLayerProgress}%`;
+    const pct = previewLayerProgress / 100;
+    if (betterPreviewer && betterPreviewer.setLayerProgress) {
+      betterPreviewer.setLayerProgress(pct);
+    }
   }
 
   function setPreviewEmptyState(visible) {
@@ -1742,13 +1796,45 @@
     if (heightEl) heightEl.innerHTML = metadata && metadata.maxZ ? `<strong>Height:</strong> ${metadata.maxZ} mm` : '';
   }
 
+  function updatePreviewPlateControls() {
+    const wrap = document.getElementById('preview-plate-wrap');
+    const select = document.getElementById('preview-plate-select');
+    if (!wrap || !select) return;
+
+    const count = Array.isArray(preparedSliceCommands) ? preparedSliceCommands.length : 0;
+    if (count <= 1) {
+      wrap.style.display = 'none';
+      select.innerHTML = '';
+      previewPlateIndex = 0;
+      return;
+    }
+
+    wrap.style.display = 'inline-flex';
+    const options = [];
+    for (let i = 0; i < count; i += 1) {
+      options.push(`<option value="${i}">Plate ${i + 1}</option>`);
+    }
+    select.innerHTML = options.join('');
+    previewPlateIndex = Math.max(0, Math.min(previewPlateIndex, count - 1));
+    select.value = String(previewPlateIndex);
+  }
+
+  function onPreviewPlateChange() {
+    const select = document.getElementById('preview-plate-select');
+    if (!select) return;
+    const idx = parseInt(select.value, 10);
+    previewPlateIndex = Number.isInteger(idx) ? idx : 0;
+    loadLatestGCode();
+  }
+
   function resolveGCodeUrl() {
+    if (window.preparedSliceCommands && window.preparedSliceCommands.length > 0) {
+      const idx = Math.max(0, Math.min(previewPlateIndex, window.preparedSliceCommands.length - 1));
+      const fullPath = window.preparedSliceCommands[idx].output_gcode;
+      return `/api/print3r/gcode/${fullPath.split(/[\\\/]/).pop()}`;
+    }
     if (currentGCodePath) {
       return `/api/print3r/gcode/${currentGCodePath.split(/[\\\/]/).pop()}`;
-    }
-    if (window.preparedSliceCommands && window.preparedSliceCommands.length > 0) {
-      const fullPath = window.preparedSliceCommands[0].output_gcode;
-      return `/api/print3r/gcode/${fullPath.split(/[\\\/]/).pop()}`;
     }
     const slug = getActiveProjectName().toLowerCase().replace(/[^a-z0-9]/g, '_');
     return `/api/print3r/gcode/${slug}.gcode`;
@@ -1762,6 +1848,7 @@
     const statusEl = document.getElementById('slicer-status');
     const sliderWrap = document.getElementById('preview-slider-wrap');
     const layerHud = document.getElementById('preview-layer-hud');
+    const progressWrap = document.getElementById('preview-progress-wrap');
 
     setPreviewLoading(true);
     setPreviewEmptyState(false);
@@ -1769,6 +1856,7 @@
     // Hide controls while loading
     if (sliderWrap) sliderWrap.style.display = 'none';
     if (layerHud) layerHud.style.display = 'none';
+    if (progressWrap) progressWrap.style.display = 'none';
 
     try {
       const response = await fetch(gcodeUrl);
@@ -1808,25 +1896,28 @@
       }
 
       const total = Math.max(0, layerCount - 1);
+      const totalDisplay = Math.max(0, layerCount);
 
       // Update slider
       const slider = document.getElementById('better-preview-layer-slider');
       const totalLabel = document.getElementById('better-preview-layer-total');
       const currentLabel = document.getElementById('better-preview-layer-current');
       if (slider) { slider.max = total; slider.value = total; }
-      if (totalLabel) totalLabel.textContent = total;
-      if (currentLabel) currentLabel.textContent = total;
+      if (totalLabel) totalLabel.textContent = totalDisplay;
+      if (currentLabel) currentLabel.textContent = totalDisplay;
 
       // Update HUD chip
       const hudCurrent = document.getElementById('hud-layer-current');
       const hudTotal = document.getElementById('hud-layer-total');
-      if (hudCurrent) hudCurrent.textContent = total;
-      if (hudTotal) hudTotal.textContent = total;
+      if (hudCurrent) hudCurrent.textContent = totalDisplay;
+      if (hudTotal) hudTotal.textContent = totalDisplay;
 
       // Show the slider and HUD if we have layers
       if (layerCount > 0) {
         if (sliderWrap) sliderWrap.style.display = 'flex';
         if (layerHud) layerHud.style.display = 'flex';
+        if (progressWrap) progressWrap.style.display = 'flex';
+        setPreviewLayerProgress(previewLayerProgress, true);
       }
 
       if (metadata) {
@@ -1842,6 +1933,7 @@
       setPreviewEmptyState(true);
       if (sliderWrap) sliderWrap.style.display = 'none';
       if (layerHud) layerHud.style.display = 'none';
+      if (progressWrap) progressWrap.style.display = 'none';
       if (statusEl) statusEl.textContent = 'No G-Code found for preview. Slice your project first.';
     } finally {
       setPreviewLoading(false);
@@ -2295,6 +2387,7 @@
     try {
       preparedSliceCommands = [];
       preparedSliceProfile = '';
+      updatePreviewPlateControls();
 
       const projectName = getActiveProjectName();
       const settings = await loadPrint3rSettingsForCurrentProject();
@@ -2324,6 +2417,8 @@
       const commands = Array.isArray(parsed.commands) ? parsed.commands : [];
       preparedSliceCommands = commands;
       preparedSliceProfile = parsed.profile_name || generated.profile_name || '';
+      previewPlateIndex = 0;
+      updatePreviewPlateControls();
 
       if (commands.length > 0) {
         if (autoStart) {
@@ -2390,6 +2485,8 @@
     if (!hadError) {
       if (preparedSliceCommands && preparedSliceCommands.length > 0) {
         currentGCodePath = preparedSliceCommands[0].output_gcode;
+        previewPlateIndex = 0;
+        updatePreviewPlateControls();
         performAutosave(true);
       }
       if (status) status.textContent = "Slice complete";

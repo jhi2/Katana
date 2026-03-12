@@ -13,12 +13,17 @@ export default class PreviewUI {
             buildHeight: 250,
             extrusionColor: 0x00d1b2,
             travelColor: 0x222222,
-            backgroundColor: 0x0a0a0a
+            backgroundColor: 0x0a0a0a,
+            tubeRadius: 0.22,
+            tubeSides: 6
         }, config);
 
         this.layers = [];
         this.maxLayerIndex = 0;
         this.currentLayerCount = 0;
+        this.tubesEnabled = true;
+        this.currentLayerIndex = 0;
+        this.currentLayerProgress = 1;
 
         this._initThree();
     }
@@ -47,6 +52,9 @@ export default class PreviewUI {
         // Grid & Build Volume
         this._buildPlatform();
 
+        // Simple lighting for tube mode
+        this._buildLights();
+
         // Layer group
         this.layerGroup = new THREE.Group();
         this.scene.add(this.layerGroup);
@@ -67,6 +75,15 @@ export default class PreviewUI {
         const mat = new THREE.MeshBasicMaterial({ color: 0x444444, wireframe: true, transparent: true, opacity: 0.1 });
         const box = new THREE.Mesh(geo, mat);
         this.scene.add(box);
+    }
+
+    _buildLights() {
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        this.scene.add(ambient);
+
+        const dir = new THREE.DirectionalLight(0xffffff, 0.6);
+        dir.position.set(1, 2, 1);
+        this.scene.add(dir);
     }
 
     animate() {
@@ -100,6 +117,8 @@ export default class PreviewUI {
         this.layers = [];
         this.currentLayerCount = 0;
         this.maxLayerIndex = 0;
+        this.currentLayerIndex = 0;
+        this.currentLayerProgress = 1;
     }
 
     async processGCode(gcodeStr) {
@@ -198,13 +217,19 @@ export default class PreviewUI {
                 const geo = new THREE.BufferGeometry();
                 geo.setAttribute('position', new THREE.Float32BufferAttribute(layer.extrusions, 3));
                 const line = new THREE.LineSegments(geo, extMat);
+                line.name = "extrusion_line";
                 group.add(line);
+                layer.extrusionLine = line;
+                layer.extrusionSegments = layer.extrusions.length / 6;
             }
             if (layer.travels.length > 0) {
                 const geo = new THREE.BufferGeometry();
                 geo.setAttribute('position', new THREE.Float32BufferAttribute(layer.travels, 3));
                 const line = new THREE.LineSegments(geo, trvMat);
+                line.name = "travel_line";
                 group.add(line);
+                layer.travelLine = line;
+                layer.travelSegments = layer.travels.length / 6;
             }
 
             // Initially visible
@@ -214,6 +239,10 @@ export default class PreviewUI {
         }
 
         this.maxLayerIndex = this.layers.length - 1;
+        if (this.tubesEnabled) {
+            this.toggleTubes(true);
+        }
+        this.setLayer(this.maxLayerIndex);
     }
 
     getLayerCount() {
@@ -224,18 +253,138 @@ export default class PreviewUI {
         if (!this.layers) return;
         if (index < 0) index = 0;
         if (index >= this.layers.length) index = this.layers.length - 1;
-
-        for (let i = 0; i < this.layers.length; i++) {
-            if (this.layers[i].group) {
-                this.layers[i].group.visible = (i <= index);
-            }
-        }
+        this.currentLayerIndex = index;
+        this._applyLayerVisibility();
         this.maxLayerIndex = index;
     }
 
+    setLayerProgress(progress) {
+        const clamped = Math.max(0, Math.min(1, Number(progress)));
+        this.currentLayerProgress = isNaN(clamped) ? 1 : clamped;
+        this._applyLayerVisibility();
+    }
+
+    _applyLayerVisibility() {
+        if (!this.layers) return;
+        for (let i = 0; i < this.layers.length; i++) {
+            const layer = this.layers[i];
+            if (!layer || !layer.group) continue;
+            if (i < this.currentLayerIndex) {
+                layer.group.visible = true;
+                this._applyLayerProgressToLayer(layer, 1);
+            } else if (i === this.currentLayerIndex) {
+                layer.group.visible = true;
+                this._applyLayerProgressToLayer(layer, this.currentLayerProgress);
+            } else {
+                layer.group.visible = false;
+            }
+        }
+    }
+
+    _applyLayerProgressToLayer(layer, progress) {
+        const pct = Math.max(0, Math.min(1, Number(progress)));
+
+        if (layer.extrusionLine && layer.extrusionLine.geometry) {
+            const segs = Math.max(0, layer.extrusionSegments || 0);
+            const visibleSegs = Math.floor(segs * pct);
+            const vertexCount = Math.max(0, visibleSegs * 2);
+            layer.extrusionLine.geometry.setDrawRange(0, vertexCount);
+        }
+        if (layer.travelLine && layer.travelLine.geometry) {
+            const segs = Math.max(0, layer.travelSegments || 0);
+            const visibleSegs = Math.floor(segs * pct);
+            const vertexCount = Math.max(0, visibleSegs * 2);
+            layer.travelLine.geometry.setDrawRange(0, vertexCount);
+        }
+        if (layer.extrusionTubes) {
+            const total = layer.extrusionTubeTotal || layer.extrusionTubes.count;
+            const target = Math.floor(total * pct);
+            layer.extrusionTubes.count = Math.max(0, Math.min(total, target));
+        }
+    }
+
     toggleTubes(show) {
-        // Just a stub for compatibility with former tube toggle. Real 3D tubes are slow for big GCode.
-        console.log("[PreviewUI] Tubes mode not available in local renderer");
+        this.tubesEnabled = !!show;
+        if (!this.layers || this.layers.length === 0) return;
+
+        for (let i = 0; i < this.layers.length; i++) {
+            const layer = this.layers[i];
+            if (!layer || !layer.group) continue;
+
+            if (this.tubesEnabled) {
+                if (!layer.extrusionTubes && layer.extrusions && layer.extrusions.length > 0) {
+                    layer.extrusionTubes = this._buildTubeMesh(layer.extrusions, this.config.extrusionColor);
+                    if (layer.extrusionTubes) {
+                        layer.extrusionTubes.name = "extrusion_tubes";
+                        layer.extrusionTubeTotal = layer.extrusionTubes.count;
+                        layer.group.add(layer.extrusionTubes);
+                    }
+                }
+                if (layer.extrusionLine) layer.extrusionLine.visible = false;
+                if (layer.extrusionTubes) layer.extrusionTubes.visible = true;
+            } else {
+                if (layer.extrusionLine) layer.extrusionLine.visible = true;
+                if (layer.extrusionTubes) layer.extrusionTubes.visible = false;
+            }
+        }
+        this._applyLayerVisibility();
+    }
+
+    _buildTubeMesh(positions, color) {
+        const eps = 1e-6;
+        let count = 0;
+        for (let i = 0; i < positions.length; i += 6) {
+            const dx = positions[i + 3] - positions[i];
+            const dy = positions[i + 4] - positions[i + 1];
+            const dz = positions[i + 5] - positions[i + 2];
+            const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (len > eps) count += 1;
+        }
+        if (count === 0) return null;
+
+        const geometry = new THREE.CylinderGeometry(
+            this.config.tubeRadius,
+            this.config.tubeRadius,
+            1,
+            this.config.tubeSides,
+            1,
+            true
+        );
+        const material = new THREE.MeshStandardMaterial({
+            color,
+            roughness: 0.4,
+            metalness: 0.1
+        });
+        const mesh = new THREE.InstancedMesh(geometry, material, count);
+        mesh.frustumCulled = false;
+
+        const up = new THREE.Vector3(0, 1, 0);
+        const start = new THREE.Vector3();
+        const end = new THREE.Vector3();
+        const dir = new THREE.Vector3();
+        const mid = new THREE.Vector3();
+        const quat = new THREE.Quaternion();
+        const scale = new THREE.Vector3();
+        const mat = new THREE.Matrix4();
+
+        let idx = 0;
+        for (let i = 0; i < positions.length; i += 6) {
+            start.set(positions[i], positions[i + 1], positions[i + 2]);
+            end.set(positions[i + 3], positions[i + 4], positions[i + 5]);
+            dir.subVectors(end, start);
+            const len = dir.length();
+            if (len <= eps) continue;
+            dir.normalize();
+            quat.setFromUnitVectors(up, dir);
+            mid.copy(start).add(end).multiplyScalar(0.5);
+            scale.set(1, len, 1);
+            mat.compose(mid, quat, scale);
+            mesh.setMatrixAt(idx, mat);
+            idx += 1;
+        }
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.visible = false;
+        return mesh;
     }
 
     render() {

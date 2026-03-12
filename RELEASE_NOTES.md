@@ -1,5 +1,18 @@
 # Katana Release Notes
 
+## Version 6.1.0
+
+### 🚀 Preview Upgrades
+- **Tube Rendering Always On**: G-code extrusion paths now render as 3D tubes by default for clearer depth and flow.
+- **Layer Progress Scrub**: Added a horizontal progress slider to reveal toolpaths within the current layer.
+- **Layer HUD Improvements**: Layer counters now display 1-based progress (e.g., 15/204).
+- **Multi-Plate Preview Selector**: Preview now supports multi-plate slicing outputs with a plate selector for per-plate G-code.
+
+### 🧭 UI/UX
+- **Preview Controls Cleanup**: Removed the tube toggle in favor of a dedicated always-on 3D tube mode.
+
+---
+
 ## Version 6.0.0
 
 ### 🚀 Major Features
