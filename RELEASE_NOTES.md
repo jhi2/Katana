@@ -1,5 +1,15 @@
 # Katana Release Notes
 
+## Version 6.1.1
+
+### 🚀 Preview
+- **Layer Progress Persistence**: The horizontal layer progress scrub now holds its position when switching layers or reloading the preview.
+
+### 🧭 UI/UX
+- **Modal-Only Messaging**: Replaced browser alerts/confirmations with in-app modals (project delete, clear plate, printer setup errors).
+
+---
+
 ## Version 6.1.0
 
 ### 🚀 Preview Upgrades

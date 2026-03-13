@@ -548,6 +548,8 @@
             class="fas fa-cube"></i></span><span>Slice</span></a></li>
     <li id="preview-tab" class="is-disabled"><a onclick="switchTab('preview')"><span class="icon is-small"><i
             class="fas fa-layer-group"></i></span><span>Preview</span></a></li>
+    <li id="upload-tab" class="is-disabled"><a onclick="switchTab('upload')"><span class="icon is-small"><i
+            class="fas fa-cloud-upload-alt"></i></span><span>Upload</span></a></li>
     <li id="videos-tab"><a onclick="switchTab('videos')"><span class="icon is-small"><i
             class="fas fa-video"></i></span><span>Monitor</span></a></li>
     <li id="documents-tab"><a onclick="switchTab('documents')"><span class="icon is-small"><i
@@ -740,6 +742,27 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- UPLOAD CONTENT -->
+  <div id="upload-content" class="tab-content">
+    <div class="box has-background-black-ter has-text-white">
+      <h3 class="title is-4 has-text-white mb-3"><i class="fas fa-cloud-upload-alt mr-2"></i>Upload to Printer</h3>
+      <p class="has-text-grey mb-4">Send the sliced G-code to your configured printer.</p>
+      <div id="upload-plate-wrap" class="field is-grouped is-grouped-multiline" style="display:none; align-items:center;">
+        <div class="control">
+          <div class="select is-small">
+            <select id="upload-plate-select" onchange="onUploadPlateChange()"></select>
+          </div>
+        </div>
+      </div>
+      <div class="buttons">
+        <button class="button is-primary" onclick="uploadLatestGCodeToPrinter()">
+          <span class="icon is-small"><i class="fas fa-paper-plane"></i></span><span>Upload G-code</span>
+        </button>
+      </div>
+      <p id="upload-status" class="has-text-grey mt-3"></p>
     </div>
   </div>
 
@@ -1126,6 +1149,8 @@
   let preparedSliceCommands = [];
   let previewPlateIndex = 0;
   let previewLayerProgress = 100;
+  let uploadPlateIndex = 0;
+  let uploadReady = false;
   let preparedSliceProfile = '';
   let sliceRunning = false;
   let currentGCodePath = null;
@@ -1166,11 +1191,25 @@
   function setSliceAccess(enabled) {
     const sliceTab = document.getElementById('printers-tab');
     const previewTab = document.getElementById('preview-tab');
+    const uploadTab = document.getElementById('upload-tab');
     if (!sliceTab) return;
     projectReady = enabled;
     sliceTab.classList.toggle('is-disabled', !enabled);
     if (previewTab) previewTab.classList.toggle('is-disabled', !enabled);
-    if (!enabled && (sliceTab.classList.contains('is-active') || (previewTab && previewTab.classList.contains('is-active')))) {
+    if (!enabled) {
+      uploadReady = false;
+      if (uploadTab) uploadTab.classList.add('is-disabled');
+    }
+    if (!enabled && (sliceTab.classList.contains('is-active') || (previewTab && previewTab.classList.contains('is-active')) || (uploadTab && uploadTab.classList.contains('is-active')))) {
+      switchTab('home');
+    }
+  }
+
+  function setUploadAccess(enabled) {
+    const uploadTab = document.getElementById('upload-tab');
+    uploadReady = !!enabled;
+    if (uploadTab) uploadTab.classList.toggle('is-disabled', !uploadReady);
+    if (!uploadReady && uploadTab && uploadTab.classList.contains('is-active')) {
       switchTab('home');
     }
   }
@@ -1179,6 +1218,10 @@
   function switchTab(tabName) {
     if (tabName === 'printers' && !projectReady) {
       showMessageModal('Create or open a project first.');
+      return;
+    }
+    if (tabName === 'upload' && (!projectReady || !uploadReady)) {
+      showMessageModal('Slice a project first to unlock Upload.');
       return;
     }
     document.querySelectorAll('.tabs li').forEach(t => t.classList.remove('is-active'));
@@ -1210,6 +1253,9 @@
         setPreviewLayerProgress(previewLayerProgress, true);
         loadLatestGCode();
       });
+    }
+    if (tabName === 'upload') {
+      updateUploadPlateControls();
     }
     if (tabName === 'videos') {
       resizeMonitorFrame();
@@ -1868,6 +1914,78 @@
     loadLatestGCode();
   }
 
+  function updateUploadPlateControls() {
+    const wrap = document.getElementById('upload-plate-wrap');
+    const select = document.getElementById('upload-plate-select');
+    if (!wrap || !select) return;
+
+    const count = Array.isArray(preparedSliceCommands) ? preparedSliceCommands.length : 0;
+    if (count <= 1) {
+      wrap.style.display = 'none';
+      select.innerHTML = '';
+      uploadPlateIndex = 0;
+      return;
+    }
+
+    wrap.style.display = 'inline-flex';
+    const options = [];
+    for (let i = 0; i < count; i += 1) {
+      options.push(`<option value="${i}">Plate ${i + 1}</option>`);
+    }
+    select.innerHTML = options.join('');
+    uploadPlateIndex = Math.max(0, Math.min(uploadPlateIndex, count - 1));
+    select.value = String(uploadPlateIndex);
+  }
+
+  function onUploadPlateChange() {
+    const select = document.getElementById('upload-plate-select');
+    if (!select) return;
+    const idx = parseInt(select.value, 10);
+    uploadPlateIndex = Number.isInteger(idx) ? idx : 0;
+  }
+
+  function resolveUploadGCodeFilename() {
+    if (window.preparedSliceCommands && window.preparedSliceCommands.length > 0) {
+      const idx = Math.max(0, Math.min(uploadPlateIndex, window.preparedSliceCommands.length - 1));
+      const fullPath = window.preparedSliceCommands[idx].output_gcode;
+      return fullPath.split(/[\\\/]/).pop();
+    }
+    if (currentGCodePath) {
+      return currentGCodePath.split(/[\\\/]/).pop();
+    }
+    const slug = getActiveProjectName().toLowerCase().replace(/[^a-z0-9]/g, '_');
+    return `${slug}.gcode`;
+  }
+
+  async function uploadLatestGCodeToPrinter() {
+    const statusEl = document.getElementById('upload-status');
+    if (!uploadReady || !projectReady) {
+      showMessageModal('Slice a project first to unlock Upload.');
+      return;
+    }
+    const filename = resolveUploadGCodeFilename();
+    if (!filename) {
+      showMessageModal('No G-code found to upload.', 'Upload');
+      return;
+    }
+    if (statusEl) statusEl.textContent = `Uploading ${filename}...`;
+    try {
+      const res = await fetch('/api/gcode/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Upload failed');
+      }
+      if (statusEl) statusEl.textContent = `Uploaded: ${filename}`;
+    } catch (err) {
+      if (statusEl) statusEl.textContent = 'Upload failed';
+      showMessageModal(`Upload failed: ${err.message}`, 'Upload');
+    }
+  }
+
   function resolveGCodeUrl() {
     if (window.preparedSliceCommands && window.preparedSliceCommands.length > 0) {
       const idx = Math.max(0, Math.min(previewPlateIndex, window.preparedSliceCommands.length - 1));
@@ -2037,6 +2155,7 @@
 
       localStorage.setItem('katana_last_project', filename);
       setSliceAccess(true);
+      setUploadAccess(false);
       document.getElementById('active-project-name').value = project.name;
       updateNavbarProjectName(project.name);
       currentGCodePath = project.gcode_path || null;
@@ -2075,6 +2194,7 @@
 
       localStorage.setItem('katana_last_project', result.filename);
       setSliceAccess(true);
+      setUploadAccess(false);
       currentGCodePath = null;
       const nameInput = document.getElementById('active-project-name');
       if (nameInput) nameInput.value = name.trim();
@@ -2101,6 +2221,7 @@
         if (localStorage.getItem('katana_last_project') === filename) {
           localStorage.removeItem('katana_last_project');
           setSliceAccess(false);
+          setUploadAccess(false);
           switchTab('home');
           updateNavbarProjectName('None');
         }
@@ -2381,6 +2502,53 @@
     slider.value = String(value);
   }
 
+  function getMaterialPrint3rOverrides(materialKey) {
+    const profiles = {
+      pla: {
+        temperature: 205,
+        bed_temperature: 60,
+        first_layer_temperature: 210,
+        first_layer_bed_temperature: 60,
+        cool_fan_speed: 100,
+        cool_fan_speed_max: 100,
+        cool_fan_speed_min: 35
+      },
+      petg: {
+        temperature: 240,
+        bed_temperature: 80,
+        first_layer_temperature: 245,
+        first_layer_bed_temperature: 85,
+        cool_fan_speed: 40,
+        cool_fan_speed_max: 60,
+        cool_fan_speed_min: 0
+      },
+      abs: {
+        temperature: 245,
+        bed_temperature: 100,
+        first_layer_temperature: 250,
+        first_layer_bed_temperature: 105,
+        cool_fan_speed: 0,
+        cool_fan_speed_max: 0,
+        cool_fan_speed_min: 0
+      },
+      tpu: {
+        temperature: 225,
+        bed_temperature: 50,
+        first_layer_temperature: 230,
+        first_layer_bed_temperature: 55,
+        cool_fan_speed: 60,
+        cool_fan_speed_max: 80,
+        cool_fan_speed_min: 20
+      }
+    };
+    return profiles[materialKey] || profiles.pla;
+  }
+
+  function applyMaterialOverrides(settings, materialKey) {
+    const overrides = getMaterialPrint3rOverrides(materialKey);
+    return Object.assign({}, settings, overrides);
+  }
+
   function setSettingsMode(mode) {
     settingsMode = (mode === 'expert') ? 'expert' : 'easy';
     localStorage.setItem(SETTINGS_MODE_KEY, settingsMode);
@@ -2431,14 +2599,18 @@
       preparedSliceCommands = [];
       preparedSliceProfile = '';
       updatePreviewPlateControls();
+      updateUploadPlateControls();
+      setUploadAccess(false);
 
       const projectName = getActiveProjectName();
       const settings = await loadPrint3rSettingsForCurrentProject();
+      const materialKey = slicer ? slicer.getProjectMaterial() : 'pla';
+      const materializedSettings = applyMaterialOverrides(settings, materialKey);
 
       const generateRes = await fetch('/api/print3r/generate_profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_name: projectName, settings })
+        body: JSON.stringify({ project_name: projectName, settings: materializedSettings })
       });
       const generated = await generateRes.json();
       if (!generated.success) throw new Error(generated.error || 'Failed to generate profile');
@@ -2462,6 +2634,8 @@
       preparedSliceProfile = parsed.profile_name || generated.profile_name || '';
       previewPlateIndex = 0;
       updatePreviewPlateControls();
+      uploadPlateIndex = 0;
+      updateUploadPlateControls();
 
       if (commands.length > 0) {
         if (autoStart) {
@@ -2530,6 +2704,9 @@
         currentGCodePath = preparedSliceCommands[0].output_gcode;
         previewPlateIndex = 0;
         updatePreviewPlateControls();
+        uploadPlateIndex = 0;
+        updateUploadPlateControls();
+        setUploadAccess(true);
         performAutosave(true);
       }
       if (status) status.textContent = "Slice complete";
